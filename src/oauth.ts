@@ -4,12 +4,7 @@ import jwt from 'jsonwebtoken'
 import { createClient } from '@supabase/supabase-js'
 import { mintMcpToken } from './mcpToken.js'
 import { markMcpSession } from './mcpSessions.js'
-
-interface RegisteredClient {
-  clientId: string
-  redirectUris: string[]
-  createdAt: number
-}
+import { registerClient as persistClient, getClient } from './mcpClients.js'
 
 interface PendingAuthorization {
   codeChallenge: string
@@ -25,13 +20,18 @@ interface PendingAuthorization {
   userId?: string
 }
 
-// In-memory stores — a single-instance dev/first-deploy assumption.
-// ponytail: swap for a shared store (Redis, or a Supabase table) if/when
-// this service runs as more than one instance behind a load balancer.
-const registeredClients = new Map<string, RegisteredClient>()
+// Registered clients (Dynamic Client Registration) are persisted in
+// Supabase via mcpClients.ts — see that file and the mcp_oauth_clients
+// migration for why (registrations are meant to outlive a server
+// restart). pendingFlows/pendingCodes stay in-memory: both have 5-10
+// minute TTLs, and a server restart mid-login just means the user
+// retries — not worth the persistence overhead. Still a single-instance
+// dev/first-deploy assumption for those two.
+// ponytail: swap pendingFlows/pendingCodes for a shared store (Redis, or a
+// Supabase table) if/when this service runs as more than one instance
+// behind a load balancer.
 const pendingFlows = new Map<string, PendingAuthorization>()
 const pendingCodes = new Map<string, PendingAuthorization>()
-const CLIENT_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days — registrations are meant to be long-lived
 const FLOW_TTL_MS = 10 * 60 * 1000
 const CODE_TTL_MS = 5 * 60 * 1000
 const MAX_PENDING = 10_000
@@ -96,7 +96,7 @@ export function createOAuthRouter(): Router {
   // redirect_uri /authorize will accept for that client_id — replacing a
   // single global allowlist, since different MCP clients legitimately use
   // different (sometimes dynamically-chosen loopback) redirect URIs.
-  router.post('/register', (req, res) => {
+  router.post('/register', async (req, res) => {
     const { redirect_uris: redirectUris } = req.body as { redirect_uris?: unknown }
 
     if (!Array.isArray(redirectUris) || redirectUris.length === 0 || !redirectUris.every((u) => typeof u === 'string')) {
@@ -105,30 +105,23 @@ export function createOAuthRouter(): Router {
         .json({ error: 'invalid_client_metadata', error_description: 'redirect_uris must be a non-empty string array' })
     }
 
-    pruneExpired(registeredClients, CLIENT_TTL_MS)
-    if (registeredClients.size >= MAX_PENDING) {
-      return res.status(503).json({ error: 'temporarily_unavailable' })
-    }
-
-    const clientId = crypto.randomBytes(16).toString('hex')
-    const createdAt = Date.now()
-    registeredClients.set(clientId, { clientId, redirectUris, createdAt })
+    const client = await persistClient(redirectUris)
 
     res.status(201).json({
-      client_id: clientId,
-      client_id_issued_at: Math.floor(createdAt / 1000),
-      redirect_uris: redirectUris,
+      client_id: client.clientId,
+      client_id_issued_at: Math.floor(Date.now() / 1000),
+      redirect_uris: client.redirectUris,
       grant_types: ['authorization_code'],
       response_types: ['code'],
       token_endpoint_auth_method: 'none',
     })
   })
 
-  router.get('/authorize', (req, res) => {
+  router.get('/authorize', async (req, res) => {
     const { client_id: clientId, redirect_uri: redirectUri, code_challenge: codeChallenge, code_challenge_method: codeChallengeMethod, scope, state } =
       req.query as Record<string, string>
 
-    const client = clientId ? registeredClients.get(clientId) : undefined
+    const client = clientId ? await getClient(clientId) : null
     if (!client) {
       return res.status(400).json({ error: 'invalid_request', error_description: 'unknown client_id — call /register first' })
     }

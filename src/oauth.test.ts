@@ -27,6 +27,24 @@ vi.mock('./mcpSessions', () => ({
   markMcpSession: vi.fn().mockResolvedValue(undefined),
 }))
 
+// In-memory stand-in for mcpClients.ts's Supabase-backed persistence —
+// oauth.ts only depends on the registerClient/getClient contract, not on
+// how it's implemented, so this is sufficient without spinning up a real
+// Supabase client for these tests. mcpClients.test.ts covers the real
+// module's Supabase calls directly.
+vi.mock('./mcpClients', () => {
+  const clients = new Map<string, { clientId: string; redirectUris: string[] }>()
+  return {
+    registerClient: vi.fn(async (redirectUris: string[]) => {
+      const clientId = Math.random().toString(36).slice(2)
+      const client = { clientId, redirectUris }
+      clients.set(clientId, client)
+      return client
+    }),
+    getClient: vi.fn(async (clientId: string) => clients.get(clientId) ?? null),
+  }
+})
+
 import { createOAuthRouter } from './oauth.js'
 import { markMcpSession } from './mcpSessions.js'
 
