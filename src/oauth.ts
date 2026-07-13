@@ -6,16 +6,28 @@ import { mintMcpToken } from './mcpToken.js'
 import { markMcpSession } from './mcpSessions.js'
 import { registerClient as persistClient, getClient } from './mcpClients.js'
 
+const VALID_SCOPES = ['read', 'write', 'admin'] as const
+type Scope = (typeof VALID_SCOPES)[number]
+
 interface PendingAuthorization {
   codeChallenge: string
   codeChallengeMethod: 'plain' | 'S256'
-  scopes: ('read' | 'write' | 'admin')[]
+  // The scope the MCP client requested (shown to the user on the consent
+  // screen as a hint of what it's asking for) — NOT what's actually
+  // granted. Requested scope must never be trusted as granted scope: an
+  // MCP client picks its own request value, so honoring it directly would
+  // let any client silently self-escalate to write/admin with no user
+  // decision in the loop. Kept separate from PendingAuthorization.scopes
+  // below (the actually-granted set, chosen by the user in /complete).
+  requestedScope: string
   redirectUri: string
   state?: string
   createdAt: number
-  // Filled in by POST /authorize/:flowId/complete once the frontend
-  // confirms a real Supabase session — absent until then, which is what
-  // GET /token checks to reject a code minted for a flow nobody completed.
+  // Filled in by POST /authorize/:flowId/complete once the user has
+  // confirmed a real Supabase session AND chosen which scopes to grant —
+  // absent until then, which is what GET /token checks to reject a code
+  // minted for a flow nobody completed.
+  scopes?: Scope[]
   supabaseAccessToken?: string
   userId?: string
 }
@@ -143,7 +155,7 @@ export function createOAuthRouter(): Router {
     pendingFlows.set(flowId, {
       codeChallenge,
       codeChallengeMethod: (codeChallengeMethod as 'plain' | 'S256') ?? 'S256',
-      scopes: (scope ?? 'read').split(' ') as ('read' | 'write' | 'admin')[],
+      requestedScope: scope ?? 'read',
       redirectUri,
       state,
       createdAt: Date.now(),
@@ -154,16 +166,35 @@ export function createOAuthRouter(): Router {
     res.redirect(consentUrl.toString())
   })
 
+  router.options('/authorize/:flowId', allowFrontendCors)
+
+  // Called by the frontend's /mcp-authorize consent screen to render what
+  // the MCP client is asking for (which scope it requested) before the
+  // user decides what to actually grant.
+  router.get('/authorize/:flowId', allowFrontendCors, (req, res) => {
+    const flowId = req.params.flowId as string
+    pruneExpired(pendingFlows, FLOW_TTL_MS)
+    const pending = pendingFlows.get(flowId)
+    if (!pending) {
+      return res.status(400).json({ error: 'invalid_request', error_description: 'unknown or expired flow' })
+    }
+    res.json({ requested_scope: pending.requestedScope })
+  })
+
   router.options('/authorize/:flowId/complete', allowFrontendCors)
 
   // Called by the frontend's /mcp-authorize consent screen once the user
   // has a real Supabase session and clicks "Authorize" — completes the
-  // pending flow with their real identity and returns the URL the
-  // frontend should redirect the browser to next (the MCP client's own
-  // redirect_uri, carrying the authorization code).
+  // pending flow with their real identity and the scopes they actually
+  // chose to grant, and returns the URL the frontend should redirect the
+  // browser to next (the MCP client's own redirect_uri, carrying the
+  // authorization code).
   router.post('/authorize/:flowId/complete', allowFrontendCors, async (req, res) => {
     const flowId = req.params.flowId as string
-    const { access_token: accessToken } = req.body as Record<string, string>
+    const { access_token: accessToken, scopes: requestedScopes } = req.body as {
+      access_token?: string
+      scopes?: unknown
+    }
 
     pruneExpired(pendingFlows, FLOW_TTL_MS)
     const pending = pendingFlows.get(flowId)
@@ -174,6 +205,22 @@ export function createOAuthRouter(): Router {
     if (!accessToken) {
       return res.status(400).json({ error: 'invalid_request', error_description: 'missing access_token' })
     }
+
+    // The user's own choice on the consent screen is the ONLY source of
+    // granted scopes — never what the MCP client requested in
+    // pending.requestedScope. Trusting the client's requested value would
+    // let any MCP client silently self-escalate to write/admin with no
+    // human decision in the loop, defeating the point of a consent screen.
+    if (
+      !Array.isArray(requestedScopes) ||
+      requestedScopes.length === 0 ||
+      !requestedScopes.every((s): s is Scope => VALID_SCOPES.includes(s))
+    ) {
+      return res
+        .status(400)
+        .json({ error: 'invalid_request', error_description: 'scopes must be a non-empty array of read/write/admin' })
+    }
+    const scopes = requestedScopes as Scope[]
 
     // Verifies the token against Supabase Auth itself (not just decoding
     // the JWT locally) — this is the actual authentication check the
@@ -199,6 +246,7 @@ export function createOAuthRouter(): Router {
     const code = crypto.randomBytes(24).toString('base64url')
     pendingCodes.set(code, {
       ...pending,
+      scopes,
       supabaseAccessToken: accessToken,
       userId: data.user.id,
       createdAt: Date.now(),
@@ -218,7 +266,13 @@ export function createOAuthRouter(): Router {
     }
 
     const pending = pendingCodes.get(code)
-    if (!pending || Date.now() - pending.createdAt > CODE_TTL_MS || !pending.userId || !pending.supabaseAccessToken) {
+    if (
+      !pending ||
+      Date.now() - pending.createdAt > CODE_TTL_MS ||
+      !pending.userId ||
+      !pending.supabaseAccessToken ||
+      !pending.scopes
+    ) {
       return res.status(400).json({ error: 'invalid_grant' })
     }
     pendingCodes.delete(code)

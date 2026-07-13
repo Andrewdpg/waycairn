@@ -47,6 +47,7 @@ vi.mock('./mcpClients', () => {
 
 import { createOAuthRouter } from './oauth.js'
 import { markMcpSession } from './mcpSessions.js'
+import { mintMcpToken } from './mcpToken.js'
 
 function makeApp() {
   const app = express()
@@ -144,12 +145,59 @@ describe('GET /oauth/authorize', () => {
   })
 })
 
+describe('GET /oauth/authorize/:flowId', () => {
+  it('rejects an unknown or expired flow id', async () => {
+    const res = await request(makeApp()).get('/oauth/authorize/does-not-exist')
+    expect(res.status).toBe(400)
+  })
+
+  it('returns the scope the client requested, for the consent screen to display', async () => {
+    const app = makeApp()
+    const clientId = await registerClient(app, ['https://claude.ai/callback'])
+    const authRes = await request(app).get('/oauth/authorize').query({
+      client_id: clientId,
+      redirect_uri: 'https://claude.ai/callback',
+      code_challenge: 'YmFzZTY0dXJsLWNoYWxsZW5nZQ',
+      code_challenge_method: 'plain',
+      scope: 'read write',
+    })
+    const flowId = new URL(authRes.headers.location!).searchParams.get('flow')!
+
+    const res = await request(app).get(`/oauth/authorize/${flowId}`)
+    expect(res.status).toBe(200)
+    expect(res.body.requested_scope).toBe('read write')
+  })
+})
+
 describe('POST /oauth/authorize/:flowId/complete', () => {
   it('rejects an unknown or expired flow id', async () => {
     const res = await request(makeApp())
       .post('/oauth/authorize/does-not-exist/complete')
-      .send({ access_token: 'whatever' })
+      .send({ access_token: 'whatever', scopes: ['read'] })
     expect(res.status).toBe(400)
+  })
+
+  it('rejects when scopes is missing, empty, or contains an invalid value', async () => {
+    const app = makeApp()
+    const clientId = await registerClient(app, ['https://claude.ai/callback'])
+    const authRes = await request(app).get('/oauth/authorize').query({
+      client_id: clientId,
+      redirect_uri: 'https://claude.ai/callback',
+      code_challenge: 'YmFzZTY0dXJsLWNoYWxsZW5nZQ',
+      code_challenge_method: 'plain',
+      scope: 'read',
+    })
+    const flowId = new URL(authRes.headers.location!).searchParams.get('flow')!
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null })
+    const accessToken = fakeSupabaseAccessToken('session-abc')
+
+    for (const badScopes of [undefined, [], ['superadmin']]) {
+      const res = await request(app)
+        .post(`/oauth/authorize/${flowId}/complete`)
+        .send({ access_token: accessToken, scopes: badScopes })
+      expect(res.status).toBe(400)
+      expect(res.body.error).toBe('invalid_request')
+    }
   })
 
   it('rejects when Supabase rejects the access_token (not a real session)', async () => {
@@ -167,7 +215,7 @@ describe('POST /oauth/authorize/:flowId/complete', () => {
     mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'invalid token' } })
     const res = await request(app)
       .post(`/oauth/authorize/${flowId}/complete`)
-      .send({ access_token: 'forged-token' })
+      .send({ access_token: 'forged-token', scopes: ['read'] })
     expect(res.status).toBe(401)
   })
 
@@ -199,11 +247,14 @@ describe('POST /oauth/authorize/:flowId/complete', () => {
 
     const res = await request(app)
       .post(`/oauth/authorize/${flowId}/complete`)
-      .send({ access_token: fakeSupabaseAccessToken('session-abc') })
+      .send({ access_token: fakeSupabaseAccessToken('session-abc'), scopes: ['read'] })
     expect(res.headers['access-control-allow-origin']).toBe('http://localhost:5173')
   })
 
-  it('completes the flow and returns the client redirect_uri carrying a code, once given a real Supabase session', async () => {
+  it('grants only the scopes the user chose on the consent screen, not what the client requested', async () => {
+    // The core of this feature: an MCP client can request scope=read
+    // write admin, but the user only checks "read" on the consent
+    // screen — the minted token must carry only what the user granted.
     const app = makeApp()
     const clientId = await registerClient(app, ['https://claude.ai/callback'])
     const authRes = await request(app).get('/oauth/authorize').query({
@@ -211,7 +262,7 @@ describe('POST /oauth/authorize/:flowId/complete', () => {
       redirect_uri: 'https://claude.ai/callback',
       code_challenge: 'YmFzZTY0dXJsLWNoYWxsZW5nZQ',
       code_challenge_method: 'plain',
-      scope: 'read write',
+      scope: 'read write admin',
       state: 'xyz',
     })
     const flowId = new URL(authRes.headers.location!).searchParams.get('flow')!
@@ -221,7 +272,7 @@ describe('POST /oauth/authorize/:flowId/complete', () => {
 
     const res = await request(app)
       .post(`/oauth/authorize/${flowId}/complete`)
-      .send({ access_token: accessToken })
+      .send({ access_token: accessToken, scopes: ['read'] })
 
     expect(res.status).toBe(200)
     const redirect = new URL(res.body.redirect_uri)
@@ -276,7 +327,7 @@ describe('POST /oauth/token', () => {
     const accessToken = fakeSupabaseAccessToken('session-abc')
     const completeRes = await request(app)
       .post(`/oauth/authorize/${flowId}/complete`)
-      .send({ access_token: accessToken })
+      .send({ access_token: accessToken, scopes: ['read'] })
     const code = new URL(completeRes.body.redirect_uri).searchParams.get('code')!
 
     const res = await request(app).post('/oauth/token').send({
@@ -287,6 +338,12 @@ describe('POST /oauth/token', () => {
     expect(res.status).toBe(200)
     expect(res.body.access_token).toBe('minted-mcp-token')
     expect(markMcpSession).toHaveBeenCalledWith('session-abc', 'user-123')
+    // Client requested "read write" above, but the consent screen only
+    // granted "read" — the minted token must reflect the user's choice,
+    // not the client's ask.
+    expect(mintMcpToken).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-123', scopes: ['read'] })
+    )
   })
 
   it('rejects a token exchange for a code whose flow was never completed', async () => {
