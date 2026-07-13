@@ -60,4 +60,17 @@ describe('create_diagram/update_diagram node schema', () => {
     const result = nodeSchema.safeParse({ id: 'x', label: 'X', kind: 'boundary' })
     expect(result.success).toBe(false)
   })
+
+  it('rejects an unrecognized field instead of silently stripping it', () => {
+    // Regression guard: z.object() defaults to "strip" mode — it silently
+    // DROPS unknown keys before the tool handler (and
+    // validateDiagramShape's own unknown-field check) ever sees them. That
+    // silently neutralized the unknown-field rejection added to
+    // validateDiagramShape.ts: an agent's ad-hoc "parent" field passed
+    // straight through here undetected, in practice, before .strict() was
+    // added. Without .strict(), this test would report success: true with
+    // "parent" simply missing from result.data, not an error.
+    const result = nodeSchema.safeParse({ id: 'a', label: 'A', kind: 'service', parent: 'host' })
+    expect(result.success).toBe(false)
+  })
 })

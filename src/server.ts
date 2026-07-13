@@ -21,39 +21,52 @@ import { NODE_KINDS } from './validateDiagramShape.js'
 // childDiagram (the mechanism for drill-down sub-diagrams), valid node
 // kinds, or any other field short of trial-and-error against validation
 // error messages — which is exactly what happened in practice.
-export const nodeSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  kind: z
-    .enum(['system', 'container', 'component', 'service', 'server', 'database', 'class', 'external', 'bridge'])
-    .describe(`One of: ${NODE_KINDS.join(', ')}. Drives the rendered shape (a database is a cylinder, etc).`),
-  childDiagram: z
-    .string()
-    .optional()
-    .describe(
-      'Slug of another diagram in this project to drill into when this node is clicked. This is how sub-diagrams work: create the child diagram separately (its own create_diagram call, own slug), then set childDiagram here to that slug to link it in as this node\'s detail view. Without this, a node has no drill-down and the child diagram (if it exists) is only reachable via the standalone diagram picker in the web UI, not by clicking this node.'
-    ),
-  responsibility: z.string().optional().describe('One sentence, always visible on the node face.'),
-  techStack: z.array(z.string()).optional(),
-  dataOwned: z.string().optional(),
-  gotchas: z.array(z.string()).optional(),
-  attributes: z.array(z.string()).optional().describe('For a "class" kind node in a uml-structural diagram.'),
-  operations: z.array(z.string()).optional().describe('For a "class" kind node in a uml-structural diagram.'),
-  sourceRefs: z.array(z.string()).optional().describe('Citations into real source code backing this node.'),
-})
+// .strict() on both schemas below matters, not just cosmetic: Zod's
+// default z.object() mode is "strip" — it silently DROPS any key not
+// listed in the schema before the tool handler ever sees the payload.
+// That silently neutralized validateDiagramShape.ts's own unknown-field
+// rejection (added to close this exact gap) — an unrecognized field like
+// "parent" never reached that check at all, because Zod had already
+// stripped it here, upstream. .strict() makes Zod itself reject the
+// request with the unknown key name, which is what actually surfaces the
+// error back to the calling agent.
+export const nodeSchema = z
+  .object({
+    id: z.string(),
+    label: z.string(),
+    kind: z
+      .enum(['system', 'container', 'component', 'service', 'server', 'database', 'class', 'external', 'bridge'])
+      .describe(`One of: ${NODE_KINDS.join(', ')}. Drives the rendered shape (a database is a cylinder, etc).`),
+    childDiagram: z
+      .string()
+      .optional()
+      .describe(
+        'Slug of another diagram in this project to drill into when this node is clicked. This is how sub-diagrams work: create the child diagram separately (its own create_diagram call, own slug), then set childDiagram here to that slug to link it in as this node\'s detail view. Without this, a node has no drill-down and the child diagram (if it exists) is only reachable via the standalone diagram picker in the web UI, not by clicking this node.'
+      ),
+    responsibility: z.string().optional().describe('One sentence, always visible on the node face.'),
+    techStack: z.array(z.string()).optional(),
+    dataOwned: z.string().optional(),
+    gotchas: z.array(z.string()).optional(),
+    attributes: z.array(z.string()).optional().describe('For a "class" kind node in a uml-structural diagram.'),
+    operations: z.array(z.string()).optional().describe('For a "class" kind node in a uml-structural diagram.'),
+    sourceRefs: z.array(z.string()).optional().describe('Citations into real source code backing this node.'),
+  })
+  .strict()
 
-const edgeSchema = z.object({
-  from: z.string().describe('Must match a node id in the same diagram.'),
-  to: z.string().describe('Must match a node id in the same diagram.'),
-  label: z.string().optional(),
-  relationship: z
-    .enum(['association', 'composition', 'inheritance', 'dependency'])
-    .optional()
-    .describe('For uml-structural class diagrams.'),
-  order: z.number().optional().describe('For uml-behavioral sequence diagrams.'),
-  async: z.boolean().optional(),
-  condition: z.string().optional(),
-})
+const edgeSchema = z
+  .object({
+    from: z.string().describe('Must match a node id in the same diagram.'),
+    to: z.string().describe('Must match a node id in the same diagram.'),
+    label: z.string().optional(),
+    relationship: z
+      .enum(['association', 'composition', 'inheritance', 'dependency'])
+      .optional()
+      .describe('For uml-structural class diagrams.'),
+    order: z.number().optional().describe('For uml-behavioral sequence diagrams.'),
+    async: z.boolean().optional(),
+    condition: z.string().optional(),
+  })
+  .strict()
 
 const diagramContentSchema = z.object({ nodes: z.array(nodeSchema), edges: z.array(edgeSchema) })
 

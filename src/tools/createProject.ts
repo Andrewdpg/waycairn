@@ -1,5 +1,6 @@
 import { supabaseForUser } from '../supabaseForUser.js'
 import { requireScope } from '../requireScope.js'
+import { throwSupabaseError } from '../supabaseError.js'
 import type { McpTokenClaims } from '../mcpToken.js'
 
 export async function createProjectTool(
@@ -14,7 +15,7 @@ export async function createProjectTool(
     .insert({ name, owner_id: claims.userId })
     .select('id, name')
     .single()
-  if (error) throw error
+  if (error) throwSupabaseError(error)
 
   // No multi-table transaction available over PostgREST — if either step
   // below fails, roll back the just-created project rather than leaving an
@@ -25,7 +26,7 @@ export async function createProjectTool(
     const { error: grantError } = await supabase
       .from('mcp_project_grants')
       .insert({ project_id: data.id, user_id: claims.userId })
-    if (grantError) throw grantError
+    if (grantError) throwSupabaseError(grantError)
 
     // resolveDiagramPath (frontend) always resolves a project's root as its
     // 'deployment' slug — without seeding one, a project created via MCP has
@@ -37,7 +38,7 @@ export async function createProjectTool(
       notation: 'c4',
       content: { nodes: [], edges: [] },
     })
-    if (diagramError) throw diagramError
+    if (diagramError) throwSupabaseError(diagramError)
   } catch (err) {
     await supabase.from('projects').delete().eq('id', data.id)
     throw err

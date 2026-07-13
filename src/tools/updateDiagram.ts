@@ -1,5 +1,6 @@
 import { supabaseForUser } from '../supabaseForUser.js'
 import { requireScope } from '../requireScope.js'
+import { throwSupabaseError } from '../supabaseError.js'
 import type { McpTokenClaims } from '../mcpToken.js'
 import { validateDiagramShape } from '../validateDiagramShape.js'
 import type { DiagramNodeData, DiagramEdgeData } from '../validateDiagramShape.js'
@@ -40,6 +41,6 @@ export async function updateDiagramTool(
   if (error?.code === 'PGRST116') {
     return { conflict: true }
   }
-  if (error) throw error
+  if (error) throwSupabaseError(error)
   return { version: data.version }
 }

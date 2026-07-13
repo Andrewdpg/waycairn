@@ -1,5 +1,6 @@
 import { supabaseForUser } from '../supabaseForUser.js'
 import { requireScope } from '../requireScope.js'
+import { throwSupabaseError } from '../supabaseError.js'
 import type { McpTokenClaims } from '../mcpToken.js'
 import { validateDiagramShape } from '../validateDiagramShape.js'
 import type { DiagramNodeData, DiagramEdgeData, Notation } from '../validateDiagramShape.js'
@@ -24,5 +25,5 @@ export async function createDiagramTool(
   const { error } = await supabase
     .from('diagrams')
     .insert({ project_id: projectId, slug, title, notation, content })
-  if (error) throw error
+  if (error) throwSupabaseError(error)
 }

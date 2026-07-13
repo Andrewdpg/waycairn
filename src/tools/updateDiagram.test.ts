@@ -27,11 +27,14 @@ describe('updateDiagramTool', () => {
     expect(result).toEqual({ conflict: true })
   })
 
-  it('throws (does not report a conflict) for a real error unrelated to version staleness', async () => {
+  it('throws (does not report a conflict) for a real error unrelated to version staleness, with the real message preserved', async () => {
     single.mockResolvedValue({ data: null, error: { code: '57014', message: 'statement timeout' } })
+    // Asserts a real Error with the message intact — not the raw
+    // Supabase error object, which the MCP SDK would stringify as
+    // "[object Object]" if thrown directly (see supabaseError.ts).
     await expect(
       updateDiagramTool(claims, 'proj-1', 'deployment', { nodes: [], edges: [] }, 4)
-    ).rejects.toEqual({ code: '57014', message: 'statement timeout' })
+    ).rejects.toThrow(/statement timeout/)
   })
 
   it('rejects when the token lacks write scope', async () => {

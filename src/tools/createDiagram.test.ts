@@ -40,4 +40,21 @@ describe('createDiagramTool', () => {
     ).rejects.toThrow(/invalid "kind"/)
     expect(insert.mock.calls.length).toBe(callsBefore)
   })
+
+  it('surfaces the real Supabase error message for a duplicate slug, not "[object Object]"', async () => {
+    // Regression guard for the exact bug reported in practice: inserting a
+    // diagram with an already-used (project_id, slug) violates a unique
+    // constraint (Postgres code 23505). Supabase-js returns that as a
+    // plain object, not a real Error instance — throwing it directly (the
+    // old `if (error) throw error`) made the MCP SDK's error handling
+    // stringify it as the literal text "[object Object]", with the actual
+    // "duplicate key value..." message lost.
+    insert.mockResolvedValue({
+      error: { code: '23505', message: 'duplicate key value violates unique constraint "diagrams_project_id_slug_key"' },
+    })
+    const claims: McpTokenClaims = { userId: 'u1', scopes: ['write'], supabaseAccessToken: 'tok' }
+    await expect(
+      createDiagramTool(claims, 'proj-1', 'dup-slug', 'D', 'c4', { nodes: [], edges: [] })
+    ).rejects.toThrow(/duplicate key value/)
+  })
 })

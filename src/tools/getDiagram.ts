@@ -1,5 +1,6 @@
 import { supabaseForUser } from '../supabaseForUser.js'
 import { requireScope } from '../requireScope.js'
+import { throwSupabaseError } from '../supabaseError.js'
 import type { McpTokenClaims } from '../mcpToken.js'
 
 export async function getDiagramTool(
@@ -15,7 +16,7 @@ export async function getDiagramTool(
     .eq('project_id', projectId)
     .eq('slug', slug)
     .single()
-  if (error) throw error
+  if (error) throwSupabaseError(error)
 
   const content = data.content as { nodes: unknown; edges: unknown }
   return {
