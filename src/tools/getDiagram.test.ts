@@ -7,8 +7,8 @@ vi.mock('../supabaseForUser', () => ({
   })),
 }))
 
-import { getDiagramTool } from './getDiagram'
-import type { McpTokenClaims } from '../mcpToken'
+import { getDiagramTool } from './getDiagram.js'
+import type { McpTokenClaims } from '../mcpToken.js'
 
 describe('getDiagramTool', () => {
   it('returns the diagram content and version', async () => {

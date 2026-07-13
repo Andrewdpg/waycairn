@@ -6,8 +6,8 @@ vi.mock('../supabaseForUser', () => ({
   })),
 }))
 
-import { listProjectsTool } from './listProjects'
-import type { McpTokenClaims } from '../mcpToken'
+import { listProjectsTool } from './listProjects.js'
+import type { McpTokenClaims } from '../mcpToken.js'
 
 describe('listProjectsTool', () => {
   it('returns projects visible to the calling user', async () => {

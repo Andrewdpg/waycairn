@@ -1,6 +1,6 @@
-import { supabaseForUser } from '../supabaseForUser'
-import { requireScope } from '../requireScope'
-import type { McpTokenClaims } from '../mcpToken'
+import { supabaseForUser } from '../supabaseForUser.js'
+import { requireScope } from '../requireScope.js'
+import type { McpTokenClaims } from '../mcpToken.js'
 
 export async function getDiagramTool(
   claims: McpTokenClaims,

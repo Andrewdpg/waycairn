@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { requireScope } from './requireScope'
-import type { McpTokenClaims } from './mcpToken'
+import { requireScope } from './requireScope.js'
+import type { McpTokenClaims } from './mcpToken.js'
 
 const claims: McpTokenClaims = { userId: 'u1', scopes: ['read'], supabaseAccessToken: 't' }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mintMcpToken, verifyMcpToken } from './mcpToken'
+import { mintMcpToken, verifyMcpToken } from './mcpToken.js'
 
 describe('mcpToken', () => {
   it('round-trips claims through mint and verify', () => {

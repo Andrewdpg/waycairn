@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import crypto from 'node:crypto'
-import { mintMcpToken } from './mcpToken'
+import { mintMcpToken } from './mcpToken.js'
 
 interface PendingAuthorization {
   codeChallenge: string

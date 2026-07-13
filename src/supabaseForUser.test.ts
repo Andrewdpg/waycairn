@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { supabaseForUser } from './supabaseForUser'
+import { supabaseForUser } from './supabaseForUser.js'
 
 describe('supabaseForUser', () => {
   it('creates a client with the Authorization header set to the given token', () => {
