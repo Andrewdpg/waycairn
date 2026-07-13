@@ -124,6 +124,27 @@ function buildMcpServer(claims: McpTokenClaims): McpServer {
 export function createApp(): express.Express {
   const app = express()
   app.use(express.json())
+
+  // OAuth 2.0 Authorization Server Metadata (RFC 8414). MCP clients fetch
+  // this before /authorize to discover the actual endpoint paths rather
+  // than assuming the spec's defaults — required for Claude Code and other
+  // MCP clients to find /oauth/register, /oauth/authorize, /oauth/token
+  // (this server nests them under /oauth/, not at the root paths the MCP
+  // spec's fallback table assumes).
+  app.get('/.well-known/oauth-authorization-server', (_req, res) => {
+    const base = `${_req.protocol}://${_req.get('host')}`
+    res.json({
+      issuer: base,
+      authorization_endpoint: `${base}/oauth/authorize`,
+      token_endpoint: `${base}/oauth/token`,
+      registration_endpoint: `${base}/oauth/register`,
+      response_types_supported: ['code'],
+      grant_types_supported: ['authorization_code'],
+      code_challenge_methods_supported: ['S256', 'plain'],
+      token_endpoint_auth_methods_supported: ['none'],
+    })
+  })
+
   app.use('/oauth', createOAuthRouter())
 
   app.post('/mcp', authenticate, async (req: Request, res: Response) => {

@@ -5,6 +5,12 @@ import { createClient } from '@supabase/supabase-js'
 import { mintMcpToken } from './mcpToken.js'
 import { markMcpSession } from './mcpSessions.js'
 
+interface RegisteredClient {
+  clientId: string
+  redirectUris: string[]
+  createdAt: number
+}
+
 interface PendingAuthorization {
   codeChallenge: string
   codeChallengeMethod: 'plain' | 'S256'
@@ -19,11 +25,13 @@ interface PendingAuthorization {
   userId?: string
 }
 
-// In-memory store — a single-instance dev/first-deploy assumption.
+// In-memory stores — a single-instance dev/first-deploy assumption.
 // ponytail: swap for a shared store (Redis, or a Supabase table) if/when
 // this service runs as more than one instance behind a load balancer.
+const registeredClients = new Map<string, RegisteredClient>()
 const pendingFlows = new Map<string, PendingAuthorization>()
 const pendingCodes = new Map<string, PendingAuthorization>()
+const CLIENT_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days — registrations are meant to be long-lived
 const FLOW_TTL_MS = 10 * 60 * 1000
 const CODE_TTL_MS = 5 * 60 * 1000
 const MAX_PENDING = 10_000
@@ -32,21 +40,6 @@ function verifyPkce(verifier: string, challenge: string, method: 'plain' | 'S256
   if (method === 'plain') return verifier === challenge
   const hashed = crypto.createHash('sha256').update(verifier).digest('base64url')
   return hashed === challenge
-}
-
-// Comma-separated allowlist of exact redirect_uri values this server will
-// hand an authorization code to. Without this, /authorize is an open
-// redirect that also leaks the code itself: anyone can pass
-// redirect_uri=https://attacker.example/steal and have this endpoint
-// forward the code there. MCP clients (e.g. Claude Code) typically redirect
-// to a fixed loopback/HTTPS callback registered out of band — configure
-// that value here.
-const allowedRedirectUris = new Set(
-  (process.env.MCP_OAUTH_ALLOWED_REDIRECT_URIS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
-)
-
-function isAllowedRedirectUri(redirectUri: string | undefined): redirectUri is string {
-  return typeof redirectUri === 'string' && allowedRedirectUris.has(redirectUri)
 }
 
 // Where the web app's consent screen lives — GET /authorize redirects the
@@ -75,16 +68,56 @@ function pruneExpired<T extends { createdAt: number }>(store: Map<string, T>, tt
 export function createOAuthRouter(): Router {
   const router = Router()
 
-  router.get('/authorize', (req, res) => {
-    const { redirect_uri, code_challenge, code_challenge_method, scope, state } = req.query as Record<
-      string,
-      string
-    >
+  // OAuth 2.0 Dynamic Client Registration (RFC 7591). MCP clients (Claude
+  // Code, etc.) call this before /authorize to obtain a client_id, rather
+  // than a pre-shared one — this server is a public client registrar (no
+  // client_secret issued; PKCE is required on every /authorize instead).
+  // Each client's redirect_uris are recorded here and are the ONLY
+  // redirect_uri /authorize will accept for that client_id — replacing a
+  // single global allowlist, since different MCP clients legitimately use
+  // different (sometimes dynamically-chosen loopback) redirect URIs.
+  router.post('/register', (req, res) => {
+    const { redirect_uris: redirectUris } = req.body as { redirect_uris?: unknown }
 
-    if (!isAllowedRedirectUri(redirect_uri)) {
-      return res.status(400).json({ error: 'invalid_request', error_description: 'unregistered redirect_uri' })
+    if (!Array.isArray(redirectUris) || redirectUris.length === 0 || !redirectUris.every((u) => typeof u === 'string')) {
+      return res
+        .status(400)
+        .json({ error: 'invalid_client_metadata', error_description: 'redirect_uris must be a non-empty string array' })
     }
-    if (!code_challenge) {
+
+    pruneExpired(registeredClients, CLIENT_TTL_MS)
+    if (registeredClients.size >= MAX_PENDING) {
+      return res.status(503).json({ error: 'temporarily_unavailable' })
+    }
+
+    const clientId = crypto.randomBytes(16).toString('hex')
+    const createdAt = Date.now()
+    registeredClients.set(clientId, { clientId, redirectUris, createdAt })
+
+    res.status(201).json({
+      client_id: clientId,
+      client_id_issued_at: Math.floor(createdAt / 1000),
+      redirect_uris: redirectUris,
+      grant_types: ['authorization_code'],
+      response_types: ['code'],
+      token_endpoint_auth_method: 'none',
+    })
+  })
+
+  router.get('/authorize', (req, res) => {
+    const { client_id: clientId, redirect_uri: redirectUri, code_challenge: codeChallenge, code_challenge_method: codeChallengeMethod, scope, state } =
+      req.query as Record<string, string>
+
+    const client = clientId ? registeredClients.get(clientId) : undefined
+    if (!client) {
+      return res.status(400).json({ error: 'invalid_request', error_description: 'unknown client_id — call /register first' })
+    }
+    if (!redirectUri || !client.redirectUris.includes(redirectUri)) {
+      return res
+        .status(400)
+        .json({ error: 'invalid_request', error_description: 'redirect_uri does not match this client\'s registration' })
+    }
+    if (!codeChallenge) {
       return res.status(400).json({ error: 'invalid_request', error_description: 'missing code_challenge' })
     }
 
@@ -95,10 +128,10 @@ export function createOAuthRouter(): Router {
 
     const flowId = crypto.randomBytes(24).toString('base64url')
     pendingFlows.set(flowId, {
-      codeChallenge: code_challenge,
-      codeChallengeMethod: (code_challenge_method as 'plain' | 'S256') ?? 'S256',
+      codeChallenge,
+      codeChallengeMethod: (codeChallengeMethod as 'plain' | 'S256') ?? 'S256',
       scopes: (scope ?? 'read').split(' ') as ('read' | 'write' | 'admin')[],
-      redirectUri: redirect_uri,
+      redirectUri,
       state,
       createdAt: Date.now(),
     })

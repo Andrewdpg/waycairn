@@ -3,13 +3,12 @@ import request from 'supertest'
 import express from 'express'
 import jwt from 'jsonwebtoken'
 
-// allowedRedirectUris/supabaseUrl/etc. are read once at oauth.ts's module
-// load. Static imports in ESM/TS always evaluate before any of this file's
-// own top-level statements, regardless of source order — vi.hoisted runs
-// before all imports are resolved, which is what actually gets these env
-// vars set in time.
+// frontendUrl/supabaseUrl/etc. are read once at oauth.ts's module load.
+// Static imports in ESM/TS always evaluate before any of this file's own
+// top-level statements, regardless of source order — vi.hoisted runs before
+// all imports are resolved, which is what actually gets these env vars set
+// in time.
 vi.hoisted(() => {
-  process.env.MCP_OAUTH_ALLOWED_REDIRECT_URIS = 'https://claude.ai/callback'
   process.env.MCP_FRONTEND_URL = 'http://localhost:5173'
   process.env.SUPABASE_URL = 'http://127.0.0.1:54321'
   process.env.SUPABASE_ANON_KEY = 'anon-key-for-tests'
@@ -44,29 +43,70 @@ function fakeSupabaseAccessToken(sessionId: string) {
   })
 }
 
+// Registers a client the way a real MCP client would before ever calling
+// /authorize, returning its client_id.
+async function registerClient(app: express.Express, redirectUris: string[]): Promise<string> {
+  const res = await request(app).post('/oauth/register').send({ redirect_uris: redirectUris })
+  return res.body.client_id
+}
+
 beforeEach(() => {
   mockGetUser.mockReset()
 })
 
+describe('POST /oauth/register', () => {
+  it('registers a client and issues a client_id, without a client_secret (public client)', async () => {
+    const res = await request(makeApp())
+      .post('/oauth/register')
+      .send({ redirect_uris: ['https://claude.ai/callback'] })
+    expect(res.status).toBe(201)
+    expect(res.body.client_id).toBeTruthy()
+    expect(res.body.client_secret).toBeUndefined()
+    expect(res.body.token_endpoint_auth_method).toBe('none')
+    expect(res.body.redirect_uris).toEqual(['https://claude.ai/callback'])
+  })
+
+  it('rejects registration with no redirect_uris', async () => {
+    const res = await request(makeApp()).post('/oauth/register').send({})
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('invalid_client_metadata')
+  })
+})
+
 describe('GET /oauth/authorize', () => {
-  it('rejects a redirect_uri that is not on the configured allowlist', async () => {
+  it('rejects an unknown client_id (never registered)', async () => {
     const res = await request(makeApp()).get('/oauth/authorize').query({
-      response_type: 'code',
-      client_id: 'claude-code',
+      client_id: 'never-registered',
+      redirect_uri: 'https://claude.ai/callback',
+      code_challenge: 'YmFzZTY0dXJsLWNoYWxsZW5nZQ',
+      code_challenge_method: 'plain',
+      scope: 'read',
+    })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('invalid_request')
+  })
+
+  it('rejects a redirect_uri that does not match this client_id\'s registration', async () => {
+    const app = makeApp()
+    const clientId = await registerClient(app, ['https://claude.ai/callback'])
+
+    const res = await request(app).get('/oauth/authorize').query({
+      client_id: clientId,
       redirect_uri: 'https://attacker.example/steal',
       code_challenge: 'YmFzZTY0dXJsLWNoYWxsZW5nZQ',
       code_challenge_method: 'plain',
       scope: 'read',
-      state: 'xyz',
     })
     expect(res.status).toBe(400)
     expect(res.body.error).toBe('invalid_request')
   })
 
   it('redirects to the frontend consent screen, not directly to the client redirect_uri', async () => {
-    const res = await request(makeApp()).get('/oauth/authorize').query({
-      response_type: 'code',
-      client_id: 'claude-code',
+    const app = makeApp()
+    const clientId = await registerClient(app, ['https://claude.ai/callback'])
+
+    const res = await request(app).get('/oauth/authorize').query({
+      client_id: clientId,
       redirect_uri: 'https://claude.ai/callback',
       code_challenge: 'YmFzZTY0dXJsLWNoYWxsZW5nZQ',
       code_challenge_method: 'plain',
@@ -90,7 +130,9 @@ describe('POST /oauth/authorize/:flowId/complete', () => {
 
   it('rejects when Supabase rejects the access_token (not a real session)', async () => {
     const app = makeApp()
+    const clientId = await registerClient(app, ['https://claude.ai/callback'])
     const authRes = await request(app).get('/oauth/authorize').query({
+      client_id: clientId,
       redirect_uri: 'https://claude.ai/callback',
       code_challenge: 'YmFzZTY0dXJsLWNoYWxsZW5nZQ',
       code_challenge_method: 'plain',
@@ -107,7 +149,9 @@ describe('POST /oauth/authorize/:flowId/complete', () => {
 
   it('completes the flow and returns the client redirect_uri carrying a code, once given a real Supabase session', async () => {
     const app = makeApp()
+    const clientId = await registerClient(app, ['https://claude.ai/callback'])
     const authRes = await request(app).get('/oauth/authorize').query({
+      client_id: clientId,
       redirect_uri: 'https://claude.ai/callback',
       code_challenge: 'YmFzZTY0dXJsLWNoYWxsZW5nZQ',
       code_challenge_method: 'plain',
@@ -139,7 +183,6 @@ describe('POST /oauth/token', () => {
         grant_type: 'authorization_code',
         code: 'does-not-exist',
         code_verifier: 'irrelevant',
-        client_id: 'claude-code',
       })
     expect(res.status).toBe(400)
     expect(res.body.error).toBe('invalid_grant')
@@ -147,7 +190,9 @@ describe('POST /oauth/token', () => {
 
   it('exchanges a code from a completed flow + matching PKCE verifier for an mcp access token', async () => {
     const app = makeApp()
+    const clientId = await registerClient(app, ['https://claude.ai/callback'])
     const authRes = await request(app).get('/oauth/authorize').query({
+      client_id: clientId,
       redirect_uri: 'https://claude.ai/callback',
       code_challenge: 'YmFzZTY0dXJsLWNoYWxsZW5nZQ', // base64url("base64url-challenge")-shaped placeholder
       code_challenge_method: 'plain',
@@ -167,7 +212,6 @@ describe('POST /oauth/token', () => {
       grant_type: 'authorization_code',
       code,
       code_verifier: 'YmFzZTY0dXJsLWNoYWxsZW5nZQ',
-      client_id: 'claude-code',
     })
     expect(res.status).toBe(200)
     expect(res.body.access_token).toBe('minted-mcp-token')
