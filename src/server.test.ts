@@ -9,7 +9,7 @@ vi.mock('./mcpToken', async () => {
   return actual
 })
 
-import { createApp } from './server.js'
+import { createApp, nodeSchema } from './server.js'
 import { mintMcpToken } from './mcpToken.js'
 
 describe('MCP HTTP endpoint auth', () => {
@@ -30,5 +30,34 @@ describe('MCP HTTP endpoint auth', () => {
     const token = mintMcpToken({ userId: 'u1', scopes: ['read'], supabaseAccessToken: 'sb-tok' })
     const res = await request(app).post('/mcp').set('Authorization', `Bearer ${token}`).send({})
     expect(res.status).not.toBe(401)
+  })
+})
+
+describe('create_diagram/update_diagram node schema', () => {
+  // Regression guard: this schema is what an MCP client actually sees when
+  // it inspects the tools (Claude Code included). It previously was
+  // z.any(), which hid childDiagram (the drill-down sub-diagram mechanism)
+  // entirely — an agent had no way to discover it short of trial-and-error,
+  // and in practice built a single flat diagram with an ad-hoc, unvalidated
+  // "parent" field instead of using the real mechanism.
+  it('exposes childDiagram as a documented, discoverable field', () => {
+    const shape = nodeSchema.shape
+    expect(shape.childDiagram).toBeDefined()
+    expect(shape.childDiagram.description).toMatch(/drill/i)
+  })
+
+  it('accepts a node with childDiagram set', () => {
+    const result = nodeSchema.safeParse({
+      id: 'api',
+      label: 'API',
+      kind: 'service',
+      childDiagram: 'api-components',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a node with an invalid kind, listing the valid ones in the error', () => {
+    const result = nodeSchema.safeParse({ id: 'x', label: 'X', kind: 'boundary' })
+    expect(result.success).toBe(false)
   })
 })
