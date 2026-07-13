@@ -64,6 +64,35 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === 'string')
 }
 
+const NODE_FIELDS = new Set([
+  'id', 'label', 'kind', 'childDiagram', 'x', 'y', 'responsibility',
+  'techStack', 'dataOwned', 'gotchas', 'attributes', 'operations', 'sourceRefs',
+])
+const EDGE_FIELDS = new Set(['from', 'to', 'label', 'relationship', 'order', 'async', 'condition'])
+
+// Rejects any field not in the schema, instead of silently ignoring it.
+// Without this, a caller (an MCP agent guessing at the shape by trial and
+// error, or a human typo) could set e.g. "parent" on a node and get no
+// error at all — it would just be dropped on the next read, with no
+// indication anything was wrong. This is exactly what happened in
+// practice: an agent set an undocumented "parent" field, saw no
+// validation error, and built an entire diagram hierarchy on a mechanism
+// that was never real.
+function assertNoUnknownFields(
+  obj: Record<string, unknown>,
+  allowed: ReadonlySet<string>,
+  diagramId: string,
+  context: string
+): void {
+  const unknown = Object.keys(obj).filter((k) => !allowed.has(k))
+  if (unknown.length > 0) {
+    throw new InvalidDiagramError(
+      diagramId,
+      `${context} has unrecognized field(s): ${unknown.join(', ')}. Valid fields: ${Array.from(allowed).join(', ')}`
+    )
+  }
+}
+
 export function validateDiagramShape(raw: unknown, diagramId: string): Diagram {
   if (typeof raw !== 'object' || raw === null) {
     throw new InvalidDiagramError(diagramId, 'not an object')
@@ -106,6 +135,7 @@ export function validateDiagramShape(raw: unknown, diagramId: string): Diagram {
         throw new InvalidDiagramError(diagramId, `node "${node.id}" has invalid "${field}" (must be string[])`)
       }
     }
+    assertNoUnknownFields(node, NODE_FIELDS, diagramId, `node "${node.id}"`)
   })
 
   d.edges.forEach((e, i) => {
@@ -137,6 +167,7 @@ export function validateDiagramShape(raw: unknown, diagramId: string): Diagram {
         `edge "${edge.from}->${edge.to}" has invalid "condition" (must be string)`
       )
     }
+    assertNoUnknownFields(edge, EDGE_FIELDS, diagramId, `edge "${edge.from}->${edge.to}"`)
   })
 
   const nodeIds = new Set(d.nodes.map((n) => (n as { id: string }).id))

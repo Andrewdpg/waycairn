@@ -14,4 +14,34 @@ describe('validateDiagramTool', () => {
     expect(result.valid).toBe(false)
     expect((result as { reason: string }).reason).toMatch(/missing "label"/)
   })
+
+  it('rejects an unrecognized field instead of silently dropping it', () => {
+    // Regression guard for the exact failure that motivated this: an agent
+    // (Claude Code, in practice) set an undocumented "parent" field on a
+    // node hoping it meant "nest this node inside another" — it was
+    // silently accepted and dropped, giving no signal the mechanism didn't
+    // exist. Unknown fields must fail loudly now.
+    const result = validateDiagramTool({
+      id: 'd',
+      title: 'D',
+      nodes: [{ id: 'a', label: 'A', kind: 'service', parent: 'host' }],
+      edges: [],
+    })
+    expect(result.valid).toBe(false)
+    expect((result as { reason: string }).reason).toMatch(/unrecognized field.*parent/i)
+  })
+
+  it('rejects an unrecognized field on an edge', () => {
+    const result = validateDiagramTool({
+      id: 'd',
+      title: 'D',
+      nodes: [
+        { id: 'a', label: 'A', kind: 'service' },
+        { id: 'b', label: 'B', kind: 'service' },
+      ],
+      edges: [{ from: 'a', to: 'b', weight: 5 }],
+    })
+    expect(result.valid).toBe(false)
+    expect((result as { reason: string }).reason).toMatch(/unrecognized field.*weight/i)
+  })
 })
