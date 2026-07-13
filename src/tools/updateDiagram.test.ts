@@ -33,4 +33,18 @@ describe('updateDiagramTool', () => {
       updateDiagramTool(readOnly, 'proj-1', 'deployment', { nodes: [], edges: [] }, 1)
     ).rejects.toThrow(/missing required scope: write/)
   })
+
+  it('rejects malformed content instead of writing it to the database', async () => {
+    const callsBefore = single.mock.calls.length
+    await expect(
+      updateDiagramTool(
+        claims,
+        'proj-1',
+        'deployment',
+        { nodes: [{ id: 'a', label: 'A', kind: 'service' }], edges: [{ from: 'a', to: 'ghost' } as any] },
+        4
+      )
+    ).rejects.toThrow(/references unknown node "ghost"/)
+    expect(single.mock.calls.length).toBe(callsBefore)
+  })
 })

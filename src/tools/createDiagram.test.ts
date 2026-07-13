@@ -28,4 +28,16 @@ describe('createDiagramTool', () => {
       createDiagramTool(claims, 'proj-1', 'd', 'D', 'c4', { nodes: [], edges: [] })
     ).rejects.toThrow(/missing required scope: write/)
   })
+
+  it('rejects malformed content instead of writing it to the database', async () => {
+    const claims: McpTokenClaims = { userId: 'u1', scopes: ['write'], supabaseAccessToken: 'tok' }
+    const callsBefore = insert.mock.calls.length
+    await expect(
+      createDiagramTool(claims, 'proj-1', 'd', 'D', 'c4', {
+        nodes: [{ id: 'a', label: 'A', kind: 'not-a-real-kind' } as any],
+        edges: [],
+      })
+    ).rejects.toThrow(/invalid "kind"/)
+    expect(insert.mock.calls.length).toBe(callsBefore)
+  })
 })
