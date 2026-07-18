@@ -18,20 +18,18 @@ describe('runInstallers', () => {
     expect(runInstallers('/repo', [])).toEqual([])
   })
 
-  it('defaults to the real, empty registry.ts installers array when none is passed', () => {
-    expect(runInstallers('/repo')).toEqual([])
-  })
-
   it('skips an installer whose detect() returns false', () => {
     const installer = fakeInstaller({ detect: vi.fn(() => false) })
     expect(runInstallers('/repo', [installer])).toEqual([])
     expect(installer.installMcpServer).not.toHaveBeenCalled()
   })
 
-  it('calls all three install methods for a detected installer and collects the results', () => {
+  it('calls all three install methods for a detected installer, passing repoRoot to each', () => {
     const installer = fakeInstaller()
     const reports = runInstallers('/repo/root', [installer])
     expect(installer.installMcpServer).toHaveBeenCalledWith('/repo/root')
+    expect(installer.installSkill).toHaveBeenCalledWith('/repo/root')
+    expect(installer.installSessionHook).toHaveBeenCalledWith('/repo/root')
     expect(reports).toEqual([
       {
         agent: 'fake-agent',

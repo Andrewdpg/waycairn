@@ -7,6 +7,6 @@ export interface AgentInstaller {
   name: string
   detect(): boolean
   installMcpServer(repoRoot: string): InstallResult
-  installSkill(): InstallResult
-  installSessionHook(): InstallResult
+  installSkill(repoRoot: string): InstallResult
+  installSessionHook(repoRoot: string): InstallResult
 }

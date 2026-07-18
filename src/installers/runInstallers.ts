@@ -15,8 +15,8 @@ export function runInstallers(repoRoot: string, agentInstallers: AgentInstaller[
     reports.push({
       agent: installer.name,
       mcpServer: installer.installMcpServer(repoRoot),
-      skill: installer.installSkill(),
-      sessionHook: installer.installSessionHook(),
+      skill: installer.installSkill(repoRoot),
+      sessionHook: installer.installSessionHook(repoRoot),
     })
   }
   return reports
