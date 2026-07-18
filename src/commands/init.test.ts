@@ -44,6 +44,8 @@ describe('runInit', () => {
     execFileSync('git', ['-C', bareRepo, 'init', '-q'])
     try {
       expect(() => runInit(bareRepo, registryPath)).toThrow(NoGitRemoteError)
+      expect(existsSync(registryPath)).toBe(false)
+      expect(existsSync(join(bareRepo, '.gitignore'))).toBe(false)
     } finally {
       rmSync(bareRepo, { recursive: true, force: true })
     }
