@@ -29,12 +29,16 @@ function textOf(result: Awaited<ReturnType<Client['callTool']>>): string {
 }
 
 describe('createLocalMcpServer', () => {
-  it('exposes all four generic artifact tools (list_repos is covered in Task 3)', async () => {
+  it('exposes all five tools', async () => {
     const { tools } = await client.listTools()
-    const names = tools.map((t) => t.name)
-    expect(names).toEqual(
-      expect.arrayContaining(['get_artifact', 'list_artifacts', 'upsert_artifact', 'validate_artifact'])
-    )
+    const names = tools.map((t) => t.name).sort()
+    expect(names).toEqual(['get_artifact', 'list_artifacts', 'list_repos', 'upsert_artifact', 'validate_artifact'])
+  })
+
+  it('list_repos reports "." when cwd is itself a repo', async () => {
+    mkdirSync(join(cwd, '.git'))
+    const result = await client.callTool({ name: 'list_repos', arguments: {} })
+    expect(JSON.parse(textOf(result))).toEqual(['.'])
   })
 
   it('round-trips an artifact through upsert_artifact then get_artifact using the default repoPath (".")', async () => {

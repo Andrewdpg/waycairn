@@ -6,6 +6,7 @@ import { listArtifactsTool } from './tools/listArtifacts.js'
 import { getArtifactTool } from './tools/getArtifact.js'
 import { upsertArtifactTool } from './tools/upsertArtifact.js'
 import { validateArtifactTool } from './tools/validateArtifact.js'
+import { listRepos } from './tools/listRepos.js'
 
 const repoPathField = z
   .string()
@@ -92,6 +93,16 @@ export function createLocalMcpServer(cwd: string): McpServer {
     async ({ kind, data }) => ({
       content: [{ type: 'text', text: JSON.stringify(validateArtifactTool(kind, data)) }],
     })
+  )
+
+  server.registerTool(
+    'list_repos',
+    {
+      description:
+        'List the repos available under the current working directory: "." if the session\'s working directory is itself a repo, plus any immediate subdirectory that is one. Call this when you need a valid repoPath value for list_artifacts/get_artifact/upsert_artifact and are not already certain which repo you are working in (e.g. the session was opened on a parent folder containing several sibling repos).',
+      inputSchema: z.object({}).strict(),
+    },
+    async () => ({ content: [{ type: 'text', text: JSON.stringify(listRepos(cwd)) }] })
   )
 
   return server
