@@ -1,7 +1,7 @@
 // src/commands/init.test.ts
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { runInit } from './init.js'
@@ -48,6 +48,30 @@ describe('runInit', () => {
       expect(existsSync(join(bareRepo, '.gitignore'))).toBe(false)
     } finally {
       rmSync(bareRepo, { recursive: true, force: true })
+    }
+  })
+
+  it('runs detected agent installers end-to-end against a fake HOME with all three agents present', () => {
+    const fakeHome = mkdtempSync(join(tmpdir(), 'waycairn-init-agents-home-'))
+    const originalHome = process.env.HOME
+    try {
+      mkdirSync(join(fakeHome, '.claude'), { recursive: true })
+      mkdirSync(join(fakeHome, '.codex'), { recursive: true })
+      mkdirSync(join(fakeHome, '.config', 'opencode'), { recursive: true })
+      process.env.HOME = fakeHome
+
+      runInit(repoRoot, registryPath)
+
+      expect(existsSync(join(repoRoot, '.mcp.json'))).toBe(true)
+      expect(existsSync(join(repoRoot, '.claude', 'skills', 'waycairn', 'SKILL.md'))).toBe(true)
+      expect(existsSync(join(repoRoot, '.claude', 'settings.json'))).toBe(true)
+      expect(existsSync(join(repoRoot, '.codex', 'config.toml'))).toBe(true)
+      expect(existsSync(join(repoRoot, '.codex', 'hooks.json'))).toBe(true)
+      expect(existsSync(join(repoRoot, 'opencode.json'))).toBe(true)
+      expect(existsSync(join(repoRoot, '.opencode', 'plugin', 'waycairn-nudge.ts'))).toBe(true)
+    } finally {
+      process.env.HOME = originalHome
+      rmSync(fakeHome, { recursive: true, force: true })
     }
   })
 })
