@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { writeArtifactFile, readArtifactFile, listArtifactFiles, artifactFilePath } from './store.js'
+import { writeArtifactFile, readArtifactFile, listArtifactFiles, artifactFilePath, UnsafeArtifactPathError } from './store.js'
 
 let waycairnDir: string
 
@@ -61,5 +61,35 @@ describe('artifact file store', () => {
 
   it('returns an empty array when the kind directory does not exist yet', () => {
     expect(listArtifactFiles(waycairnDir, 'diagram')).toEqual([])
+  })
+
+  it('rejects an id containing a path separator', () => {
+    expect(() => artifactFilePath(waycairnDir, 'diagram', '../evil')).toThrow(UnsafeArtifactPathError)
+    expect(() => artifactFilePath(waycairnDir, 'diagram', 'a/b')).toThrow(UnsafeArtifactPathError)
+    expect(() => artifactFilePath(waycairnDir, 'diagram', 'a\\b')).toThrow(UnsafeArtifactPathError)
+  })
+
+  it('rejects a kind containing "..", checked before the id', () => {
+    expect(() => artifactFilePath(waycairnDir, '../../etc', 'passwd')).toThrow(UnsafeArtifactPathError)
+  })
+
+  it('writeArtifactFile rejects an unsafe kind or id without writing anything', () => {
+    expect(() => writeArtifactFile(waycairnDir, { id: '../escape', kind: 'diagram', updatedAt: 't', data: {} })).toThrow(
+      UnsafeArtifactPathError
+    )
+    expect(listArtifactFiles(waycairnDir, 'diagram')).toEqual([])
+  })
+
+  it('readArtifactFile rejects an unsafe id', () => {
+    expect(() => readArtifactFile(waycairnDir, 'diagram', '../escape')).toThrow(UnsafeArtifactPathError)
+  })
+
+  it('listArtifactFiles rejects an unsafe kind', () => {
+    expect(() => listArtifactFiles(waycairnDir, '../escape')).toThrow(UnsafeArtifactPathError)
+  })
+
+  it('still accepts ordinary hyphenated ids and kinds (regression guard)', () => {
+    writeArtifactFile(waycairnDir, { id: 'auth-service', kind: 'session-note', updatedAt: 't', data: {} })
+    expect(readArtifactFile(waycairnDir, 'session-note', 'auth-service')).not.toBeNull()
   })
 })

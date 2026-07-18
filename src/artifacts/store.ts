@@ -8,12 +8,28 @@ export interface ArtifactRecord {
   data: unknown
 }
 
+export class UnsafeArtifactPathError extends Error {
+  constructor(field: 'kind' | 'id', value: string) {
+    super(`Unsafe artifact ${field} ${JSON.stringify(value)}: must not contain "/", "\\", or ".."`)
+    this.name = 'UnsafeArtifactPathError'
+  }
+}
+
+function assertSafePathSegment(field: 'kind' | 'id', value: string): void {
+  if (value.includes('/') || value.includes('\\') || value.includes('..')) {
+    throw new UnsafeArtifactPathError(field, value)
+  }
+}
+
 function kindDir(waycairnDir: string, kind: string): string {
+  assertSafePathSegment('kind', kind)
   return join(waycairnDir, kind)
 }
 
 export function artifactFilePath(waycairnDir: string, kind: string, id: string): string {
-  return join(kindDir(waycairnDir, kind), `${id}.json`)
+  const dir = kindDir(waycairnDir, kind) // validates kind first
+  assertSafePathSegment('id', id)
+  return join(dir, `${id}.json`)
 }
 
 export function writeArtifactFile(waycairnDir: string, record: ArtifactRecord): void {
