@@ -7,7 +7,7 @@ export interface DiagramSummary {
 }
 
 function toDiagrams(artifacts: ArtifactRecord[]): Diagram[] {
-  return artifacts.map((a) => a.data as Diagram)
+  return artifacts.map((a) => ({ ...(a.data as Diagram), id: a.id }))
 }
 
 function toSummary(diagram: Diagram): DiagramSummary {

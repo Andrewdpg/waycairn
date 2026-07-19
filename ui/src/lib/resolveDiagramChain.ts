@@ -21,7 +21,9 @@ export async function resolveDiagramChain(
   const rootRecord = await fetchFn(rootDiagramId)
   if (!rootRecord) throw new DiagramNotFoundError(rootDiagramId)
 
-  const chain: ChainEntry[] = [{ diagram: rootRecord.data as Diagram, updatedAt: rootRecord.updatedAt }]
+  const chain: ChainEntry[] = [
+    { diagram: { ...(rootRecord.data as Diagram), id: rootRecord.id }, updatedAt: rootRecord.updatedAt },
+  ]
 
   for (const nodeId of segments) {
     const current = chain[chain.length - 1].diagram
@@ -31,7 +33,7 @@ export async function resolveDiagramChain(
     }
     const record = await fetchFn(node.childDiagram)
     if (!record) throw new DiagramNotFoundError(node.childDiagram)
-    chain.push({ diagram: record.data as Diagram, updatedAt: record.updatedAt })
+    chain.push({ diagram: { ...(record.data as Diagram), id: record.id }, updatedAt: record.updatedAt })
   }
 
   return chain
