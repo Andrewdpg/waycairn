@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { join } from 'node:path'
 import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
@@ -81,3 +81,44 @@ describe('bin/waycairn.ts init', () => {
     15_000
   )
 })
+
+describe('bin/waycairn.ts ui', () => {
+  it(
+    'starts as a real subprocess and serves the local API over HTTP',
+    async () => {
+      const fakeHome = mkdtempSync(join(tmpdir(), 'waycairn-bin-ui-home-'))
+      const sessionRoot = mkdtempSync(join(tmpdir(), 'waycairn-bin-ui-cwd-'))
+      const port = 43179
+      const binPath = join(process.cwd(), 'bin', 'waycairn.ts')
+      const child = spawn('npx', ['tsx', binPath, 'ui'], {
+        cwd: sessionRoot,
+        env: { ...process.env, HOME: fakeHome, WAYCAIRN_UI_PORT: String(port) },
+      })
+      try {
+        await waitForServerReady(`http://localhost:${port}/api/repos`, 10_000)
+        const res = await fetch(`http://localhost:${port}/api/repos`)
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ local: [], registered: {} })
+      } finally {
+        child.kill()
+        rmSync(fakeHome, { recursive: true, force: true })
+        rmSync(sessionRoot, { recursive: true, force: true })
+      }
+    },
+    15_000
+  )
+})
+
+async function waitForServerReady(url: string, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url)
+      if (res.ok) return
+    } catch {
+      // server not up yet — keep polling
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  throw new Error(`server at ${url} did not become ready within ${timeoutMs}ms`)
+}
