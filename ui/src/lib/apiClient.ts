@@ -45,3 +45,11 @@ export async function fetchArtifact(repoId: string, id: string, kind = 'diagram'
   }
   return (await res.json()) as ArtifactRecord
 }
+
+export interface RepoGraphResponse {
+  groups: string[][]
+}
+
+export async function fetchRepoGraph(): Promise<RepoGraphResponse> {
+  return getJson<RepoGraphResponse>('/api/repo-graph')
+}

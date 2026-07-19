@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fetchRepos, fetchArtifacts, fetchArtifact } from './apiClient'
+import { fetchRepos, fetchArtifacts, fetchArtifact, fetchRepoGraph } from './apiClient'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -59,5 +59,15 @@ describe('apiClient', () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: 'nope' }, 500))
 
     await expect(fetchArtifacts('host/org/repo')).rejects.toThrow()
+  })
+
+  it('fetchRepoGraph calls GET /api/repo-graph and returns the parsed body', async () => {
+    const body = { groups: [['host/org/a', 'host/org/b'], ['host/org/c']] }
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse(body))
+
+    const result = await fetchRepoGraph()
+
+    expect(fetch).toHaveBeenCalledWith('/api/repo-graph')
+    expect(result).toEqual(body)
   })
 })
