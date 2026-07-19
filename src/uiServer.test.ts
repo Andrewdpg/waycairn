@@ -32,6 +32,17 @@ describe('createUiServer', () => {
     expect(res.body).toEqual({ local: ['.'], registered: { 'host/org/repo': { path: '/somewhere', name: 'repo' } } })
   })
 
+  it('GET /api/repos excludes a local repo from "local" once it is also registered', async () => {
+    const siblingPath = join(cwd, 'sibling')
+    mkdirSync(join(siblingPath, '.git'), { recursive: true })
+    upsertRegistryEntry(registryPath, 'host/org/sibling', { path: siblingPath, name: 'sibling' })
+    const app = createUiServer(cwd, registryPath, staticDir)
+    const res = await request(app).get('/api/repos')
+    expect(res.status).toBe(200)
+    expect(res.body.local).toEqual([])
+    expect(res.body.registered).toEqual({ 'host/org/sibling': { path: siblingPath, name: 'sibling' } })
+  })
+
   it('GET /api/repos/:repoId/artifacts lists artifacts for a registered repo, repoId URL-encoded', async () => {
     const repoRoot = mkdtempSync(join(tmpdir(), 'waycairn-uiserver-repo-'))
     try {
