@@ -15,19 +15,19 @@ function Seeded({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
-function renderChip(seed: boolean) {
+function renderChip(seed: boolean, currentRepoId = 'host/org/b') {
   return render(
     <MemoryRouter initialEntries={['/repos/host%2Forg%2Fb/diagrams/root']}>
       <BackStackProvider>
         {seed ? (
           <Seeded>
             <Routes>
-              <Route path="*" element={<BackToRepoChip />} />
+              <Route path="*" element={<BackToRepoChip currentRepoId={currentRepoId} />} />
             </Routes>
           </Seeded>
         ) : (
           <Routes>
-            <Route path="*" element={<BackToRepoChip />} />
+            <Route path="*" element={<BackToRepoChip currentRepoId={currentRepoId} />} />
           </Routes>
         )}
       </BackStackProvider>
@@ -46,13 +46,19 @@ describe('BackToRepoChip', () => {
     expect(await screen.findByRole('button', { name: /host\/org\/a/ })).toBeInTheDocument()
   })
 
+  it('renders nothing when the top entry points at the repo already being viewed', async () => {
+    renderChip(true, 'host/org/a')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
   it('clicking navigates to the stored location and pops the entry', async () => {
     render(
       <MemoryRouter initialEntries={['/repos/host%2Forg%2Fb/diagrams/root']}>
         <BackStackProvider>
           <Seeded>
             <Routes>
-              <Route path="*" element={<BackToRepoChip />} />
+              <Route path="*" element={<BackToRepoChip currentRepoId="host/org/b" />} />
               <Route path="/repos/host%2Forg%2Fa/diagrams/root/x" element={<div>Landed</div>} />
             </Routes>
           </Seeded>

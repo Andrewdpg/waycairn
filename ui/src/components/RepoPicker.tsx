@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchRepos, fetchRepoGraph, type ReposResponse, type RepoGraphResponse } from '../lib/apiClient'
 import { groupRepos, filterGroups, type RepoGroup } from '../lib/repoGrouping'
+import { useBackStack } from '../lib/backStack'
 
 function RepoGroupList({ registered, group }: { registered: ReposResponse['registered']; group: RepoGroup }) {
   return (
@@ -23,6 +24,12 @@ export function RepoPicker() {
   const [repoGraph, setRepoGraph] = useState<RepoGraphResponse | null>(null)
   const [query, setQuery] = useState('')
   const [error, setError] = useState(false)
+  const { clear } = useBackStack()
+
+  useEffect(() => {
+    clear()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     Promise.all([fetchRepos(), fetchRepoGraph()])
@@ -81,6 +88,8 @@ export function RepoPicker() {
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
           No repos registered yet — run <code>waycairn init</code> inside a repo to register it.
         </p>
+      ) : groups.length === 0 ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No repositories match your search.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {groups.map((group) => (

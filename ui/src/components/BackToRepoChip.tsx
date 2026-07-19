@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import { useBackStack } from '../lib/backStack'
 
-export function BackToRepoChip() {
+export function BackToRepoChip({ currentRepoId }: { currentRepoId: string }) {
   const { top, pop } = useBackStack()
   const navigate = useNavigate()
 
-  if (!top) return null
+  if (!top || top.repoId === currentRepoId) return null
 
   function handleClick() {
     const { repoId, diagramId, segments } = top!

@@ -10,6 +10,7 @@ interface BackStackContextValue {
   top: BackStackEntry | null
   push: (entry: BackStackEntry) => void
   pop: () => void
+  clear: () => void
 }
 
 const BackStackContext = createContext<BackStackContextValue | null>(null)
@@ -25,9 +26,13 @@ export function BackStackProvider({ children }: { children: ReactNode }) {
     setStack((s) => s.slice(0, -1))
   }
 
+  function clear() {
+    setStack([])
+  }
+
   const top = stack.length > 0 ? stack[stack.length - 1] : null
 
-  return <BackStackContext.Provider value={{ top, push, pop }}>{children}</BackStackContext.Provider>
+  return <BackStackContext.Provider value={{ top, push, pop, clear }}>{children}</BackStackContext.Provider>
 }
 
 export function useBackStack(): BackStackContextValue {

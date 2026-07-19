@@ -38,6 +38,14 @@ describe('useBackStack', () => {
     expect(result.current.top).toBeNull()
   })
 
+  it('clear empties the stack', () => {
+    const { result } = renderHook(() => useBackStack(), { wrapper })
+    act(() => result.current.push({ repoId: 'a', diagramId: 'root', segments: [] }))
+    act(() => result.current.push({ repoId: 'b', diagramId: 'root', segments: [] }))
+    act(() => result.current.clear())
+    expect(result.current.top).toBeNull()
+  })
+
   it('throws when used outside a BackStackProvider', () => {
     expect(() => renderHook(() => useBackStack())).toThrow(/BackStackProvider/)
   })

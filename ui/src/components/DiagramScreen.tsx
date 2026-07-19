@@ -109,7 +109,7 @@ export function DiagramScreen() {
         <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
           <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 5, display: 'flex', gap: 8, alignItems: 'center' }}>
             <Breadcrumb labels={labels} onNavigate={handleBreadcrumbNavigate} />
-            <BackToRepoChip />
+            <BackToRepoChip currentRepoId={repoId!} />
           </div>
           <DiagramCanvas
             nodes={positionedNodes}
