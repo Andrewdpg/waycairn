@@ -10,7 +10,7 @@ of its normal workflow, nudged to keep it current.
 
 ## Install
 
-    npm install -g waycairn   # not yet published — for now, clone + npm install + npm link
+    npm install -g waycairn
 
 Inside a repo you want to document:
 
@@ -21,6 +21,14 @@ it in a global `~/.waycairn/registry.json`, ensures `.waycairn/index.sqlite`
 is gitignored, and installs the MCP server + (where supported) a
 documentation Skill and a session-end nudge for every AI agent detected on
 the machine (Claude Code, Codex CLI, opencode).
+
+If you usually open your agent at a *parent* folder holding several
+sibling repos (rather than one repo at a time), use
+`waycairn init --workspace` there instead — it installs the same MCP/skill/
+hook config without requiring a git remote and without registering the
+folder itself (it isn't a documentable repo). The MCP tools already
+support this via `repoPath` (see below); this just gets the config
+installed at that level.
 
 ## How it stores documentation
 
@@ -63,8 +71,21 @@ by whoever reads it, via `get_artifact`'s `repoId` parameter.
 
 ## CLI
 
-    waycairn init   # register this repo, install agent integrations
-    waycairn mcp    # start the stdio MCP server (what an agent's config actually launches)
+    waycairn init              # register this repo, install agent integrations
+    waycairn init --workspace  # install agent integrations for a parent folder of sibling repos, without registering it
+    waycairn mcp               # start the stdio MCP server (what an agent's config actually launches)
+    waycairn ui                # start a local, read-only web UI for browsing diagrams
+    waycairn -h                # show the full command reference
+
+## UI
+
+`waycairn ui` starts a local Express server (binds to `127.0.0.1` only —
+no auth, so it never listens on the network) at
+`http://localhost:4317` (override with `WAYCAIRN_UI_PORT`). It serves a
+picker over every repo registered via `waycairn init`, a searchable list
+of each repo's root diagrams, and the diagram canvas itself with
+drill-down through `childDiagram` links. Read-only in this first version —
+diagrams are still written by an agent via the MCP tools, not from the UI.
 
 ## Testing
 
@@ -72,7 +93,6 @@ by whoever reads it, via `get_artifact`'s `repoId` parameter.
 
 ## Known limitations
 
-- Not yet published to npm — install from source.
 - Codex's session-end hook only fires once the user has marked the project
   trusted in Codex itself; `waycairn init` can't detect or control that.
 - A registry entry whose `path` has moved or been deleted isn't cleaned up
@@ -80,4 +100,7 @@ by whoever reads it, via `get_artifact`'s `repoId` parameter.
 - `externalRef`/`childDiagram` aren't validated against what they point at
   when written — a typo is only visible when something tries to resolve
   the reference later.
-- No visual UI yet — diagrams are read/written as JSON via the MCP tools.
+- `waycairn ui` is read-only and only browses repos registered via
+  `waycairn init` — a `local` (unregistered) repo isn't browsable from it
+  yet, and there's no click-through for `externalRef` into a different
+  repo's diagram.

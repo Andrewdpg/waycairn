@@ -2,7 +2,7 @@
 // bin/waycairn.ts
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createLocalMcpServer } from '../src/localServer.js'
-import { runInit } from '../src/commands/init.js'
+import { runInit, runInitWorkspace } from '../src/commands/init.js'
 import { createUiServer } from '../src/uiServer.js'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -21,11 +21,29 @@ function resolveUiDistDir(scriptDir: string): string {
   return join(scriptDir, '..', '..', 'ui', 'dist')
 }
 
+const HELP_TEXT = `waycairn <command> [options]
+
+Commands:
+  init               Register this repo and install agent integrations (requires a git remote)
+  init --workspace   Install agent integrations for a parent folder of several sibling repos, without registering it as a repo
+  mcp                Start the stdio MCP server (what an agent's config launches)
+  ui                 Start a local, read-only web UI for browsing diagrams (http://localhost:4317, override with WAYCAIRN_UI_PORT)
+
+Options:
+  -h, --help         Show this help
+`
+
 const subcommand = process.argv[2]
 
-if (subcommand === 'init') {
+if (subcommand === '-h' || subcommand === '--help') {
+  console.log(HELP_TEXT)
+} else if (subcommand === 'init') {
   try {
-    runInit(process.cwd())
+    if (process.argv[3] === '--workspace') {
+      runInitWorkspace(process.cwd())
+    } else {
+      runInit(process.cwd())
+    }
   } catch (err) {
     console.error(err instanceof Error ? err.message : err)
     process.exit(1)

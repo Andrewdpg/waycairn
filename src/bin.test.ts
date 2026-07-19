@@ -82,6 +82,53 @@ describe('bin/waycairn.ts init', () => {
   )
 })
 
+describe('bin/waycairn.ts init --workspace', () => {
+  it(
+    'runs as a real subprocess against a plain (non-git) folder, installing agent config without registering it',
+    () => {
+      const fakeHome = mkdtempSync(join(tmpdir(), 'waycairn-bin-init-workspace-home-'))
+      const workspaceRoot = mkdtempSync(join(tmpdir(), 'waycairn-bin-init-workspace-root-'))
+      try {
+        const binPath = join(process.cwd(), 'bin', 'waycairn.ts')
+        execFileSync('npx', ['tsx', binPath, 'init', '--workspace'], {
+          cwd: workspaceRoot,
+          env: { ...process.env, HOME: fakeHome },
+        })
+        expect(existsSync(join(fakeHome, '.waycairn', 'registry.json'))).toBe(false)
+        expect(existsSync(join(workspaceRoot, '.gitignore'))).toBe(false)
+      } finally {
+        rmSync(fakeHome, { recursive: true, force: true })
+        rmSync(workspaceRoot, { recursive: true, force: true })
+      }
+    },
+    15_000
+  )
+})
+
+describe('bin/waycairn.ts -h', () => {
+  it(
+    'prints a full command reference and exits 0',
+    () => {
+      const binPath = join(process.cwd(), 'bin', 'waycairn.ts')
+      const output = execFileSync('npx', ['tsx', binPath, '-h'], { encoding: 'utf8' })
+      expect(output).toContain('init --workspace')
+      expect(output).toContain('Start the stdio MCP server')
+      expect(output).toContain('read-only web UI')
+    },
+    15_000
+  )
+
+  it(
+    '--help is an alias for -h',
+    () => {
+      const binPath = join(process.cwd(), 'bin', 'waycairn.ts')
+      const output = execFileSync('npx', ['tsx', binPath, '--help'], { encoding: 'utf8' })
+      expect(output).toContain('init --workspace')
+    },
+    15_000
+  )
+})
+
 describe('bin/waycairn.ts ui', () => {
   it(
     'starts as a real subprocess and serves the local API over HTTP',
