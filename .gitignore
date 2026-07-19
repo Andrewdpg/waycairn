@@ -3,6 +3,8 @@ dist
 
 # build/typecheck byproducts
 *.tsbuildinfo
+ui/vite.config.js
+ui/vite.config.d.ts
 
 # logs
 npm-debug.log*
