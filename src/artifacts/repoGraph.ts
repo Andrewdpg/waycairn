@@ -95,10 +95,18 @@ export function buildRepoGraph(
   }
 
   function deploymentOwner(repoId: string): string | null {
+    // BFS visits repoId itself first, so a naive "first match" would always
+    // report self as owner (e.g. while validating repoId's own in-progress
+    // deployment write) and mask a real, pre-existing owner elsewhere in the
+    // component. Prefer any other owner over self; fall back to self only if
+    // nobody else in the component has one.
+    let selfOwner: string | null = null
     for (const candidate of componentOf(repoId)) {
-      if (hasDeployment.has(candidate)) return candidate
+      if (!hasDeployment.has(candidate)) continue
+      if (candidate !== repoId) return candidate
+      selfOwner = candidate
     }
-    return null
+    return selfOwner
   }
 
   return { componentOf, deploymentOwner }
