@@ -110,4 +110,20 @@ describe('createUiServer', () => {
     expect(res.status).toBe(200)
     expect(res.text).toContain('waycairn ui')
   })
+
+  it('falls back to index.html for a client-side route loaded/refreshed directly', async () => {
+    writeFileSync(join(staticDir, 'index.html'), '<html>waycairn ui</html>')
+    const app = createUiServer(cwd, registryPath, staticDir)
+    const res = await request(app).get('/repos/host%2Forg%2Frepo/diagrams/deployment')
+    expect(res.status).toBe(200)
+    expect(res.text).toContain('waycairn ui')
+  })
+
+  it('does not fall back to index.html for an unmatched /api path', async () => {
+    writeFileSync(join(staticDir, 'index.html'), '<html>waycairn ui</html>')
+    const app = createUiServer(cwd, registryPath, staticDir)
+    const res = await request(app).get('/api/does-not-exist')
+    expect(res.status).toBe(404)
+    expect(res.text).not.toContain('waycairn ui')
+  })
 })

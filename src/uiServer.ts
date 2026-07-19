@@ -60,5 +60,15 @@ export function createUiServer(cwd: string, registryPath: string, staticDir: str
 
   app.use(express.static(staticDir))
 
+  // React Router routes (/repos/:repoId, /repos/:repoId/diagrams/:diagramId,
+  // ...) exist only client-side — the server has no matching file or route
+  // for them. Without this, a direct load or refresh on one of those URLs
+  // 404s instead of booting the SPA, which then takes over routing itself.
+  // Scoped to non-/api paths so a genuinely unmatched API route still 404s
+  // as itself rather than silently returning HTML.
+  app.get(/^(?!\/api\/).*/, (_req, res) => {
+    res.sendFile(join(staticDir, 'index.html'))
+  })
+
   return app
 }
