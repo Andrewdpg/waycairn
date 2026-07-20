@@ -53,27 +53,34 @@ describe('DiagramDetailPanel', () => {
     expect(screen.getByText('save(): void')).toBeInTheDocument()
   })
 
-  it('shows attributes for a table node in an erd diagram', () => {
+  it('shows columns for a table node in an erd diagram, with name and type visible', () => {
     const node: DiagramNodeData = {
       id: 'n1',
       label: 'users',
       kind: 'table',
-      attributes: ['id: uuid PK', 'email: text UNIQUE'],
+      columns: [
+        { name: 'id', type: 'uuid', primaryKey: true },
+        { name: 'email', type: 'text', unique: true },
+      ],
     }
     render(<DiagramDetailPanel node={node} notation="erd" onClose={() => {}} repoId="host/org/repo" />)
-    expect(screen.getByText('id: uuid PK')).toBeInTheDocument()
-    expect(screen.getByText('email: text UNIQUE')).toBeInTheDocument()
+    expect(screen.getByText('Columns')).toBeInTheDocument()
+    expect(screen.getByText('id')).toBeInTheDocument()
+    expect(screen.getByText('email')).toBeInTheDocument()
+    expect(screen.getByText('uuid')).toBeInTheDocument()
+    expect(screen.getByText('PK')).toBeInTheDocument()
+    expect(screen.getByText('UNIQUE')).toBeInTheDocument()
   })
 
-  it('hides attributes for a table node when the diagram notation is not erd', () => {
+  it('hides columns for a table node when the diagram notation is not erd', () => {
     const node: DiagramNodeData = {
       id: 'n1',
       label: 'users',
       kind: 'table',
-      attributes: ['id: uuid PK'],
+      columns: [{ name: 'id', type: 'uuid', primaryKey: true }],
     }
     render(<DiagramDetailPanel node={node} notation="c4" onClose={() => {}} repoId="host/org/repo" />)
-    expect(screen.queryByText('id: uuid PK')).not.toBeInTheDocument()
+    expect(screen.queryByText('Columns')).not.toBeInTheDocument()
   })
 
   it('hides attributes/operations for a class node when the diagram notation is not uml-structural', () => {

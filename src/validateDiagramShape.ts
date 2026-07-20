@@ -29,6 +29,18 @@ export interface SourceRef {
   path: string
 }
 
+// One row per column, name+type only in prose — PK/FK/unique/nullable are
+// their own fields so they render as distinct markers instead of getting
+// buried (or comma-joined with other columns) inside a free-text string.
+export interface TableColumn {
+  name: string
+  type: string
+  primaryKey?: boolean
+  foreignKey?: { table: string; column: string }
+  unique?: boolean
+  nullable?: boolean
+}
+
 export interface DiagramNodeData {
   id: string
   label: string
@@ -42,6 +54,7 @@ export interface DiagramNodeData {
   gotchas?: string[]
   attributes?: string[]
   operations?: string[]
+  columns?: TableColumn[]
   sourceRefs?: Array<string | SourceRef>
   externalRef?: { repo: string; artifactId: string }
 }
@@ -91,9 +104,36 @@ function isValidSourceRefsArray(value: unknown): value is Array<string | SourceR
   return value.every((v) => (typeof v === 'string' && v.length > 0) || isValidSourceRefObject(v))
 }
 
+const COLUMN_FIELDS = new Set(['name', 'type', 'primaryKey', 'foreignKey', 'unique', 'nullable'])
+
+function isValidTableColumn(value: unknown): value is TableColumn {
+  if (typeof value !== 'object' || value === null) return false
+  const c = value as Record<string, unknown>
+  if (typeof c.name !== 'string' || c.name.length === 0) return false
+  if (typeof c.type !== 'string' || c.type.length === 0) return false
+  if (c.primaryKey !== undefined && typeof c.primaryKey !== 'boolean') return false
+  if (c.unique !== undefined && typeof c.unique !== 'boolean') return false
+  if (c.nullable !== undefined && typeof c.nullable !== 'boolean') return false
+  if (c.foreignKey !== undefined) {
+    const fk = c.foreignKey as Record<string, unknown> | null
+    const isValidFk =
+      typeof fk === 'object' &&
+      fk !== null &&
+      typeof fk.table === 'string' &&
+      typeof fk.column === 'string' &&
+      Object.keys(fk).length === 2
+    if (!isValidFk) return false
+  }
+  return Object.keys(c).every((k) => COLUMN_FIELDS.has(k))
+}
+
+function isValidColumnsArray(value: unknown): value is TableColumn[] {
+  return Array.isArray(value) && value.every(isValidTableColumn)
+}
+
 const NODE_FIELDS = new Set([
   'id', 'label', 'kind', 'childDiagram', 'x', 'y', 'responsibility',
-  'techStack', 'dataOwned', 'gotchas', 'attributes', 'operations', 'sourceRefs',
+  'techStack', 'dataOwned', 'gotchas', 'attributes', 'operations', 'columns', 'sourceRefs',
   'externalRef',
 ])
 const EDGE_FIELDS = new Set(['from', 'to', 'label', 'relationship', 'order', 'async', 'condition', 'cardinality'])
@@ -162,6 +202,12 @@ export function validateDiagramShape(raw: unknown, diagramId: string): Diagram {
       if (node[field] !== undefined && !isStringArray(node[field])) {
         throw new InvalidDiagramError(diagramId, `node "${node.id}" has invalid "${field}" (must be string[])`)
       }
+    }
+    if (node.columns !== undefined && !isValidColumnsArray(node.columns)) {
+      throw new InvalidDiagramError(
+        diagramId,
+        `node "${node.id}" has invalid "columns" (must be an array of { name, type, primaryKey?, foreignKey?: { table, column }, unique?, nullable? })`
+      )
     }
     if (node.sourceRefs !== undefined && !isValidSourceRefsArray(node.sourceRefs)) {
       throw new InvalidDiagramError(

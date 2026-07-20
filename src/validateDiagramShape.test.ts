@@ -92,3 +92,62 @@ describe('validateDiagramShape - erd support', () => {
     ).toThrow(InvalidDiagramError)
   })
 })
+
+describe('validateDiagramShape - table columns', () => {
+  it('accepts a minimal column (name + type only)', () => {
+    const diagram = validateDiagramShape(
+      baseDiagram({ kind: 'table', columns: [{ name: 'email', type: 'varchar(255)' }] }),
+      'd1'
+    )
+    expect(diagram.nodes[0].columns).toEqual([{ name: 'email', type: 'varchar(255)' }])
+  })
+
+  it('accepts a column with primaryKey, foreignKey, unique, and nullable set', () => {
+    const column = {
+      name: 'user_id',
+      type: 'uint',
+      primaryKey: false,
+      foreignKey: { table: 'users', column: 'id' },
+      unique: true,
+      nullable: true,
+    }
+    const diagram = validateDiagramShape(baseDiagram({ kind: 'table', columns: [column] }), 'd1')
+    expect(diagram.nodes[0].columns).toEqual([column])
+  })
+
+  it('rejects a column missing "name"', () => {
+    expect(() =>
+      validateDiagramShape(baseDiagram({ kind: 'table', columns: [{ type: 'uint' }] }), 'd1')
+    ).toThrow(InvalidDiagramError)
+  })
+
+  it('rejects a column missing "type"', () => {
+    expect(() =>
+      validateDiagramShape(baseDiagram({ kind: 'table', columns: [{ name: 'id' }] }), 'd1')
+    ).toThrow(InvalidDiagramError)
+  })
+
+  it('rejects a column with an invalid foreignKey shape', () => {
+    expect(() =>
+      validateDiagramShape(
+        baseDiagram({ kind: 'table', columns: [{ name: 'user_id', type: 'uint', foreignKey: { table: 'users' } }] }),
+        'd1'
+      )
+    ).toThrow(InvalidDiagramError)
+  })
+
+  it('rejects a column with an unrecognized field', () => {
+    expect(() =>
+      validateDiagramShape(
+        baseDiagram({ kind: 'table', columns: [{ name: 'id', type: 'uint', comment: 'nope' }] }),
+        'd1'
+      )
+    ).toThrow(InvalidDiagramError)
+  })
+
+  it('rejects columns that is not an array', () => {
+    expect(() => validateDiagramShape(baseDiagram({ kind: 'table', columns: 'nope' }), 'd1')).toThrow(
+      InvalidDiagramError
+    )
+  })
+})

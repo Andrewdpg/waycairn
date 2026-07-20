@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import type { DiagramNodeData, NodeKind } from '../lib/types'
+import type { DiagramNodeData, NodeKind, TableColumn } from '../lib/types'
 import { NODE_MAX_WIDTH } from '../lib/autoLayout'
 
 export interface ShapeProps {
@@ -164,14 +164,46 @@ function ClassShape({ node, children }: ShapeProps) {
   )
 }
 
+// One line per column, never joined with another column's info — PK/FK/
+// unique/nullable render as trailing badges instead of being embedded in
+// free text, and the row itself never wraps (ellipsis instead) so a long
+// type/FK reference can't visually merge into a second "line".
+export function TableColumnRow({ column }: { column: TableColumn }) {
+  const badges: string[] = []
+  if (column.primaryKey) badges.push('PK')
+  if (column.foreignKey) badges.push(`FK → ${column.foreignKey.table}.${column.foreignKey.column}`)
+  if (column.unique) badges.push('UNIQUE')
+  if (column.nullable) badges.push('NULL')
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: 8,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}
+    >
+      <span style={{ fontWeight: 600 }}>{column.name}</span>
+      <span style={{ color: 'var(--text-muted)' }}>{column.type}</span>
+      {badges.length > 0 && (
+        <span style={{ marginLeft: 'auto', color: 'var(--accent)', fontSize: 10, flexShrink: 0 }}>
+          {badges.join(' · ')}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function TableShape({ node, children }: ShapeProps) {
   return (
     <div className="node-shape" data-shape="table" style={{ ...baseBoxStyle('table'), borderRadius: 2, padding: 0 }}>
       <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--kind-table-fg)' }}>{children}</div>
-      {node.attributes && node.attributes.length > 0 && (
-        <div style={{ padding: '6px 12px', fontSize: 11 }}>
-          {node.attributes.map((a, i) => (
-            <div key={i}>{a}</div>
+      {node.columns && node.columns.length > 0 && (
+        <div style={{ padding: '6px 12px', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {node.columns.map((c, i) => (
+            <TableColumnRow key={i} column={c} />
           ))}
         </div>
       )}

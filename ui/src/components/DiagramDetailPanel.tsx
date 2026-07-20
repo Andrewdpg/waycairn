@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { DiagramNodeData, Notation, SourceRef } from '../lib/types'
 import { getTechIcon } from '../lib/techIcons'
 import { TechBadge } from './TechBadge'
+import { TableColumnRow } from './nodeShapes'
 import { openFile } from '../lib/apiClient'
 
 export interface DiagramDetailPanelProps {
@@ -70,8 +71,8 @@ export function DiagramDetailPanel({ node, notation, onClose, repoId }: DiagramD
     return <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Click a node's eye icon to see its details here.</p>
   }
 
-  const showClassMembers =
-    (node.kind === 'class' && notation === 'uml-structural') || (node.kind === 'table' && notation === 'erd')
+  const showClassMembers = node.kind === 'class' && notation === 'uml-structural'
+  const showTableColumns = node.kind === 'table' && notation === 'erd'
 
   return (
     <div>
@@ -140,6 +141,17 @@ export function DiagramDetailPanel({ node, notation, onClose, repoId }: DiagramD
               <li key={i}>{o}</li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {showTableColumns && node.columns && node.columns.length > 0 && (
+        <section>
+          <h3 style={sectionHeadingStyle}>Columns</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+            {node.columns.map((c, i) => (
+              <TableColumnRow key={i} column={c} />
+            ))}
+          </div>
         </section>
       )}
 

@@ -30,6 +30,15 @@ export interface SourceRef {
   path: string
 }
 
+export interface TableColumn {
+  name: string
+  type: string
+  primaryKey?: boolean
+  foreignKey?: { table: string; column: string }
+  unique?: boolean
+  nullable?: boolean
+}
+
 export interface DiagramNodeData {
   id: string
   label: string
@@ -43,6 +52,7 @@ export interface DiagramNodeData {
   gotchas?: string[]
   attributes?: string[]
   operations?: string[]
+  columns?: TableColumn[]
   sourceRefs?: Array<string | SourceRef>
   externalRef?: { repo: string; artifactId: string }
 }
