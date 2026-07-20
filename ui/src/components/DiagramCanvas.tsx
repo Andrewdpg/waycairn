@@ -148,6 +148,7 @@ export function DiagramCanvas({ nodes, edges, onNodeClick, onNodeDetailRequest }
           gotchas: n.gotchas,
           attributes: n.attributes,
           operations: n.operations,
+          columns: n.columns,
           onOpenDetail: onNodeDetailRequest,
         },
         type: 'diagramNode',

@@ -59,4 +59,15 @@ describe('estimateNodeSize', () => {
     }
     expect(estimateNodeSize(long).height).toBeGreaterThan(estimateNodeSize(short).height)
   })
+
+  it('grows the height estimate for a table node with many columns, not a flat constant', () => {
+    const empty: DiagramNodeData = { id: 'a', label: 'users', kind: 'table' }
+    const withColumns: DiagramNodeData = {
+      id: 'a',
+      label: 'users',
+      kind: 'table',
+      columns: Array.from({ length: 20 }, (_, i) => ({ name: `col${i}`, type: 'text' })),
+    }
+    expect(estimateNodeSize(withColumns).height).toBeGreaterThan(estimateNodeSize(empty).height)
+  })
 })

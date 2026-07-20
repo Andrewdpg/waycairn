@@ -50,6 +50,11 @@ export function estimateNodeSize(node: DiagramNodeData): { width: number; height
       (operationLines > 0 ? 12 + operationLines * LINE_HEIGHT : 0)
   }
 
+  if (node.kind === 'table') {
+    const columnLines = node.columns?.length ?? 0
+    height += columnLines > 0 ? 12 + columnLines * LINE_HEIGHT : 0
+  }
+
   return { width, height: Math.max(BASE_HEIGHT, height) }
 }
 
