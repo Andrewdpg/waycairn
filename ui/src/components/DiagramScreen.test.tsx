@@ -112,12 +112,19 @@ describe('DiagramScreen', () => {
 
   it('fetches and renders the root diagram title in the breadcrumb', async () => {
     renderScreen('/repos/host%2Forg%2Frepo/diagrams/deployment')
-    expect(await screen.findByRole('button', { name: 'Home' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Deployment' })).toBeInTheDocument()
+  })
+
+  it('renders a link back to the repo home and a link back to the repo diagram list', async () => {
+    renderScreen('/repos/host%2Forg%2Frepo/diagrams/deployment')
+    await screen.findByRole('button', { name: 'Deployment' })
+    expect(screen.getByRole('link', { name: /home/i })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /host\/org\/repo/ })).toHaveAttribute('href', '/repos/host%2Forg%2Frepo')
   })
 
   it('drills into a childDiagram when a node with one is clicked, updating the breadcrumb', async () => {
     renderScreen('/repos/host%2Forg%2Frepo/diagrams/deployment')
-    await screen.findByRole('button', { name: 'Home' })
+    await screen.findByRole('button', { name: 'Deployment' })
     await userEvent.click(await screen.findByText('API'))
     await waitFor(() => expect(screen.getByRole('button', { name: 'API Internals' })).toBeInTheDocument())
   })
@@ -141,16 +148,16 @@ describe('DiagramScreen', () => {
 
   it('falls back to id in the breadcrumb for a diagram with no title, without crashing', async () => {
     renderScreen('/repos/host%2Forg%2Frepo/diagrams/root-untitled')
-    await screen.findByRole('button', { name: 'Home' })
+    await screen.findByRole('button', { name: 'Root' })
     await userEvent.click(await screen.findByText('Child'))
     expect(await screen.findByRole('button', { name: 'untitled-child' })).toBeInTheDocument()
   })
 
   it('navigates to another repo when a node with externalRef is clicked', async () => {
     renderScreen('/repos/host%2Forg%2Frepo/diagrams/has-external')
-    await screen.findByRole('button', { name: 'Home' })
+    await screen.findByRole('button', { name: 'Has External' })
     await userEvent.click(await screen.findByText('Payment Service'))
-    expect(await screen.findByRole('button', { name: 'Home' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Other Root' })).toBeInTheDocument()
     await waitFor(() =>
       expect(apiClient.fetchArtifact).toHaveBeenCalledWith('host/org/other-repo', 'other-root', 'diagram')
     )

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { CornerLeftUp } from 'lucide-react'
 import { useBackStack } from '../lib/backStack'
 
 export function BackToRepoChip({ currentRepoId }: { currentRepoId: string }) {
@@ -17,13 +18,14 @@ export function BackToRepoChip({ currentRepoId }: { currentRepoId: string }) {
   return (
     <button
       onClick={handleClick}
+      aria-label={`Back to ${top.repoId}`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 4,
+        gap: 6,
         padding: '8px 14px',
         background: 'var(--surface)',
-        border: '1px solid var(--border)',
+        border: 'none',
         borderRadius: 'var(--radius-lg)',
         boxShadow: 'var(--shadow-float)',
         fontSize: 13,
@@ -31,7 +33,8 @@ export function BackToRepoChip({ currentRepoId }: { currentRepoId: string }) {
         cursor: 'pointer',
       }}
     >
-      ← back to {top.repoId}
+      <CornerLeftUp size={14} />
+      back to {top.repoId}
     </button>
   )
 }

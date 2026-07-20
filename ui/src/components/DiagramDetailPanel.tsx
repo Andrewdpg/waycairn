@@ -8,7 +8,14 @@ export interface DiagramDetailPanelProps {
   onClose: () => void
 }
 
-const sectionHeadingStyle = { fontSize: 12, textTransform: 'uppercase' as const, color: 'var(--text-muted)' }
+const sectionHeadingStyle = {
+  fontSize: 10,
+  fontFamily: 'var(--font-mono)',
+  fontWeight: 600,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.14em',
+  color: 'var(--text-faint)',
+}
 
 export function DiagramDetailPanel({ node, notation, onClose }: DiagramDetailPanelProps) {
   if (!node) {

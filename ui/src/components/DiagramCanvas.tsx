@@ -146,7 +146,7 @@ export function DiagramCanvas({ nodes, edges, onNodeClick, onNodeDetailRequest }
   const handleSignature = computeHandleSignature(routing.nodeHandles)
 
   return (
-    <div style={{ width: '100%', height: '100%', background: 'var(--bg)' }}>
+    <div style={{ width: '100%', height: '100%' }}>
       <UmlMarkerDefs />
       <ReactFlowProvider>
         <DiagramFlow

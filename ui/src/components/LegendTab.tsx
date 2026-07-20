@@ -1,7 +1,14 @@
 import { NODE_KINDS } from '../lib/types'
 import { NODE_SHAPES } from './nodeShapes'
 
-const headingStyle = { fontSize: 12, textTransform: 'uppercase' as const, color: 'var(--text-muted)' }
+const headingStyle = {
+  fontSize: 10,
+  fontFamily: 'var(--font-mono)',
+  fontWeight: 600,
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.14em',
+  color: 'var(--text-faint)',
+}
 
 const EDGE_LEGEND: Array<{ sample: string; label: string; description: string }> = [
   { sample: '───────▶', label: 'Association', description: 'Plain line — a general relationship or call. The default when no relationship is set.' },

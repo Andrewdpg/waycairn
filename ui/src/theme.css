@@ -40,9 +40,12 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 14px;
+  --radius-xl: 18px;
   --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 280ms cubic-bezier(0.4, 0, 0.2, 1);
   --shadow-float: 0 12px 30px -14px rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 10px 26px -12px rgba(0, 0, 0, 0.55);
 
   --font-heading: 'Space Grotesk', system-ui, sans-serif;
   --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
@@ -149,11 +152,16 @@ input:focus-visible {
 }
 
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 28px;
-  background: var(--surface);
+  padding: 14px 28px;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .app-header-left {
@@ -279,4 +287,181 @@ input:focus-visible {
 .repo-list-item a:hover {
   background: var(--surface-raised);
   transform: translateY(-1px);
+}
+
+/* ---------- shared surfaces (no borders — depth comes from bg + shadow) ---------- */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+
+.card-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.card-link:hover,
+.card-link:focus-visible {
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.card-arrow {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition), transform var(--transition);
+}
+
+.card-link:hover .card-arrow,
+.card-link:focus-visible .card-arrow {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+.card-dashed {
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  outline: 1px dashed var(--border);
+  outline-offset: -1px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  background: var(--surface-raised);
+  padding: 2px 7px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.badge-accent {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.search-input-wrap {
+  position: relative;
+}
+
+.search-input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  height: 44px;
+  background: var(--surface);
+  color: var(--text);
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 0 16px 0 40px;
+  font-size: 14px;
+  font-family: var(--font-ui);
+  box-shadow: var(--shadow-card);
+  outline: none;
+  transition: box-shadow var(--transition);
+  box-sizing: border-box;
+}
+
+.search-input::placeholder {
+  color: var(--text-faint);
+}
+
+.search-input:focus-visible {
+  box-shadow: var(--shadow-card), 0 0 0 2px var(--accent-dim);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.section-heading h2 {
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.section-heading-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+/* Topographic contour backdrop — the cairn/trail metaphor */
+.topo-grid {
+  background-image:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 55%),
+    repeating-radial-gradient(
+      circle at 18% 30%,
+      transparent 0px,
+      transparent 46px,
+      color-mix(in srgb, var(--text) 3.5%, transparent) 46px,
+      color-mix(in srgb, var(--text) 3.5%, transparent) 47px
+    ),
+    repeating-radial-gradient(
+      circle at 82% 78%,
+      transparent 0px,
+      transparent 60px,
+      color-mix(in srgb, var(--text) 3%, transparent) 60px,
+      color-mix(in srgb, var(--text) 3%, transparent) 61px
+    );
+}
+
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.float-in {
+  animation: float-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

@@ -1,6 +1,7 @@
 // ui/src/components/DiagramScreen.tsx
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Home, LayoutGrid } from 'lucide-react'
 import { fetchArtifact } from '../lib/apiClient'
 import { resolveDiagramChain, DiagramNotFoundError, type ChainEntry } from '../lib/resolveDiagramChain'
 import type { DiagramNodeData } from '../lib/types'
@@ -76,7 +77,7 @@ export function DiagramScreen() {
   const { chain } = resolution
   const current = chain[chain.length - 1].diagram
   const positionedNodes = layoutDiagram(current.nodes, current.edges)
-  const labels = ['Home', ...chain.slice(1).map((c) => c.diagram.title ?? c.diagram.id)]
+  const labels = chain.map((c) => c.diagram.title ?? c.diagram.id)
   const selectedNode = current.nodes.find((n: DiagramNodeData) => n.id === selectedNodeId) ?? null
 
   function handleNodeClick(nodeId: string) {
@@ -106,8 +107,44 @@ export function DiagramScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, padding: 12, gap: 12, boxSizing: 'border-box' }}>
       <div style={{ flex: 1, display: 'flex', gap: 12, minHeight: 0 }}>
-        <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
-          <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 5, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div className="topo-grid" style={{ flex: 1, minWidth: 0, position: 'relative', borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--bg)' }}>
+          <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 5, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Link
+              to="/"
+              aria-label="Home"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 34,
+                height: 34,
+                background: 'var(--surface)',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: 'var(--shadow-float)',
+                color: 'var(--text-muted)',
+              }}
+            >
+              <Home size={15} />
+            </Link>
+            <Link
+              to={`/repos/${encodeURIComponent(repoId!)}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                background: 'var(--surface)',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: 'var(--shadow-float)',
+                fontSize: 13,
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--text-muted)',
+                textDecoration: 'none',
+              }}
+            >
+              <LayoutGrid size={13} />
+              {repoId}
+            </Link>
             <Breadcrumb labels={labels} onNavigate={handleBreadcrumbNavigate} />
             <BackToRepoChip currentRepoId={repoId!} />
           </div>

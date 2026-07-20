@@ -14,7 +14,6 @@ export function Breadcrumb({ labels, onNavigate }: BreadcrumbProps) {
         gap: 4,
         padding: '8px 14px',
         background: 'var(--surface)',
-        border: '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)',
         boxShadow: 'var(--shadow-float)',
         fontSize: 13,

@@ -3,6 +3,7 @@ import { RepoPicker } from './components/RepoPicker'
 import { RootDiagramsScreen } from './components/RootDiagramsScreen'
 import { DiagramScreen } from './components/DiagramScreen'
 import { BackStackProvider } from './lib/backStack'
+import { Wordmark } from './components/Wordmark'
 
 export function App() {
   return (
@@ -11,7 +12,7 @@ export function App() {
         <div className="app-shell">
           <header className="app-header">
             <Link to="/" className="app-header-brand">
-              waycairn
+              <Wordmark />
             </Link>
           </header>
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
