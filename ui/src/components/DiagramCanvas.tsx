@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -65,6 +65,7 @@ interface DiagramFlowProps {
 function DiagramFlow({ renderedNodes, flowEdges, onNodesChange, onNodeClick, handleNodeIds, handleSignature }: DiagramFlowProps) {
   const updateNodeInternals = useUpdateNodeInternals()
   const [hovered, setHovered] = useState<HoverTarget>(null)
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     for (const nodeId of handleNodeIds) {
@@ -72,6 +73,32 @@ function DiagramFlow({ renderedNodes, flowEdges, onNodesChange, onNodeClick, han
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleSignature, updateNodeInternals])
+
+  useEffect(
+    () => () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+    },
+    []
+  )
+
+  // ponytail: a dense diagram has edges/labels everywhere, so the mouse
+  // crosses several hover targets just passing through — committing to a
+  // hover immediately made the whole canvas flicker. Only commit after the
+  // mouse rests on a target for HOVER_INTENT_MS; leaving always clears
+  // immediately (and cancels any pending commit) so the highlight never
+  // lags on exit, only on entry.
+  const HOVER_INTENT_MS = 150
+  function commitHover(target: HoverTarget) {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+    if (target === null) {
+      setHovered(null)
+      return
+    }
+    hoverTimeoutRef.current = setTimeout(() => setHovered(target), HOVER_INTENT_MS)
+  }
 
   const highlight = computeHighlightedIds(
     hovered,
@@ -83,7 +110,11 @@ function DiagramFlow({ renderedNodes, flowEdges, onNodesChange, onNodeClick, han
       ? renderedNodes
       : renderedNodes.map((n) => {
           const opacity = highlight.nodeIds.has(n.id) ? 1 : 0.3
-          return { ...n, style: { ...n.style, opacity }, data: { ...n.data, opacity } }
+          return {
+            ...n,
+            style: { ...n.style, opacity, transition: 'opacity var(--transition)' },
+            data: { ...n.data, opacity },
+          }
         })
 
   const styledEdges =
@@ -91,7 +122,11 @@ function DiagramFlow({ renderedNodes, flowEdges, onNodesChange, onNodeClick, han
       ? flowEdges
       : flowEdges.map((e) => ({
           ...e,
-          style: { ...e.style, opacity: highlight.edgeIds.has(e.id as string) ? 1 : 0.15 },
+          style: {
+            ...e.style,
+            opacity: highlight.edgeIds.has(e.id as string) ? 1 : 0.15,
+            transition: 'opacity var(--transition)',
+          },
           data: { ...e.data, isHovered: hovered?.type === 'edge' && hovered.id === e.id },
         }))
 
@@ -103,10 +138,10 @@ function DiagramFlow({ renderedNodes, flowEdges, onNodesChange, onNodeClick, han
       edgeTypes={edgeTypes}
       onNodesChange={onNodesChange}
       onNodeClick={(_, node) => onNodeClick(node.id)}
-      onNodeMouseEnter={(_, node) => setHovered({ type: 'node', id: node.id })}
-      onNodeMouseLeave={() => setHovered(null)}
-      onEdgeMouseEnter={(_, edge) => setHovered({ type: 'edge', id: edge.id })}
-      onEdgeMouseLeave={() => setHovered(null)}
+      onNodeMouseEnter={(_, node) => commitHover({ type: 'node', id: node.id })}
+      onNodeMouseLeave={() => commitHover(null)}
+      onEdgeMouseEnter={(_, edge) => commitHover({ type: 'edge', id: edge.id })}
+      onEdgeMouseLeave={() => commitHover(null)}
       fitView
       defaultEdgeOptions={{ style: { stroke: 'var(--edge-stroke)' } }}
     >
