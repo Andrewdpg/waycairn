@@ -21,7 +21,7 @@ import { ExportImageButton } from './ExportImageButton'
 import { UmlMarkerDefs } from './umlMarkers'
 import { buildFlowEdges } from './buildFlowEdges'
 import { computeEdgeRouting, computeHandleSignature } from '../lib/edgeGeometry'
-import { computeHighlightedIds } from '../lib/hoverHighlight'
+import { computeHighlightedIds, type HoverTarget } from '../lib/hoverHighlight'
 import { estimateNodeSize } from '../lib/autoLayout'
 import type { PositionedNode } from '../lib/autoLayout'
 import type { DiagramEdgeData } from '../lib/types'
@@ -64,7 +64,7 @@ interface DiagramFlowProps {
 // SAME nodes keep having handles but their ids/offsets are reshuffled.
 function DiagramFlow({ renderedNodes, flowEdges, onNodesChange, onNodeClick, handleNodeIds, handleSignature }: DiagramFlowProps) {
   const updateNodeInternals = useUpdateNodeInternals()
-  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
+  const [hovered, setHovered] = useState<HoverTarget>(null)
 
   useEffect(() => {
     for (const nodeId of handleNodeIds) {
@@ -74,7 +74,7 @@ function DiagramFlow({ renderedNodes, flowEdges, onNodesChange, onNodeClick, han
   }, [handleSignature, updateNodeInternals])
 
   const highlight = computeHighlightedIds(
-    hoveredNodeId,
+    hovered,
     flowEdges.map((e) => ({ id: e.id as string, from: e.source, to: e.target }))
   )
 
@@ -89,7 +89,11 @@ function DiagramFlow({ renderedNodes, flowEdges, onNodesChange, onNodeClick, han
   const styledEdges =
     highlight.nodeIds.size === 0
       ? flowEdges
-      : flowEdges.map((e) => ({ ...e, style: { ...e.style, opacity: highlight.edgeIds.has(e.id as string) ? 1 : 0.15 } }))
+      : flowEdges.map((e) => ({
+          ...e,
+          style: { ...e.style, opacity: highlight.edgeIds.has(e.id as string) ? 1 : 0.15 },
+          data: { ...e.data, isHovered: hovered?.type === 'edge' && hovered.id === e.id },
+        }))
 
   return (
     <ReactFlow
@@ -99,8 +103,10 @@ function DiagramFlow({ renderedNodes, flowEdges, onNodesChange, onNodeClick, han
       edgeTypes={edgeTypes}
       onNodesChange={onNodesChange}
       onNodeClick={(_, node) => onNodeClick(node.id)}
-      onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
-      onNodeMouseLeave={() => setHoveredNodeId(null)}
+      onNodeMouseEnter={(_, node) => setHovered({ type: 'node', id: node.id })}
+      onNodeMouseLeave={() => setHovered(null)}
+      onEdgeMouseEnter={(_, edge) => setHovered({ type: 'edge', id: edge.id })}
+      onEdgeMouseLeave={() => setHovered(null)}
       fitView
       defaultEdgeOptions={{ style: { stroke: 'var(--edge-stroke)' } }}
     >

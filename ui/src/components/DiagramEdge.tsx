@@ -18,7 +18,14 @@ export interface DiagramEdgeProps {
   style?: CSSProperties
   markerEnd?: string
   label?: string
+  data?: { isHovered?: boolean }
 }
+
+// Collapsed to a small pill by default so a busy diagram isn't wall-to-wall
+// text — full label only reveals on hover (of the line or, since the label
+// itself has pointerEvents: none below, whatever's under it, which is the
+// same edge's wider invisible hit-path React Flow already renders).
+const COLLAPSED_MAX_WIDTH = 48
 
 export function DiagramEdge({
   sourceX,
@@ -30,6 +37,7 @@ export function DiagramEdge({
   style,
   markerEnd,
   label,
+  data,
 }: DiagramEdgeProps) {
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
@@ -53,6 +61,11 @@ export function DiagramEdge({
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               pointerEvents: 'none',
               opacity: style?.opacity,
+              maxWidth: data?.isHovered ? 'none' : COLLAPSED_MAX_WIDTH,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              transition: 'max-width var(--transition)',
             }}
           >
             {label}

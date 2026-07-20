@@ -38,4 +38,16 @@ describe('DiagramEdge', () => {
     const badge = screen.getByText('calls')
     expect(badge.style.opacity).toBe('0.15')
   })
+
+  it('collapses the label to a small max-width by default', () => {
+    renderEdge({ label: 'a much longer edge label than usual' })
+    const badge = screen.getByText('a much longer edge label than usual')
+    expect(badge.style.maxWidth).toBe('48px')
+  })
+
+  it('removes the max-width constraint when this edge is the hovered one', () => {
+    renderEdge({ label: 'a much longer edge label than usual', data: { isHovered: true } })
+    const badge = screen.getByText('a much longer edge label than usual')
+    expect(badge.style.maxWidth).toBe('none')
+  })
 })
