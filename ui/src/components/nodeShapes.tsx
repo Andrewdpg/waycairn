@@ -23,8 +23,7 @@ const baseBoxStyle = (kind: NodeKind): CSSProperties => ({
   color: 'var(--text)',
   fontFamily: 'var(--font-ui)',
   background: `var(--kind-${kind}-bg)`,
-  border: `1px solid var(--kind-${kind}-fg)`,
-  boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.4)',
+  boxShadow: 'var(--shadow-card)',
   ['--shape-glow' as string]: `var(--kind-${kind}-fg)`,
 })
 
@@ -38,7 +37,7 @@ function SystemShape({ children }: ShapeProps) {
 
 function ContainerShape({ children }: ShapeProps) {
   return (
-    <div className="node-shape" data-shape="container" style={{ ...baseBoxStyle('container'), borderRadius: 8, borderBottomWidth: 4 }}>
+    <div className="node-shape" data-shape="container" style={{ ...baseBoxStyle('container'), borderRadius: 8 }}>
       {children}
     </div>
   )
@@ -76,7 +75,7 @@ function ComponentShape({ children }: ShapeProps) {
 
 function ServiceShape({ children }: ShapeProps) {
   return (
-    <div className="node-shape" data-shape="service" style={{ ...baseBoxStyle('service'), borderRadius: 8, borderTopWidth: 4 }}>
+    <div className="node-shape" data-shape="service" style={{ ...baseBoxStyle('service'), borderRadius: 8 }}>
       {children}
     </div>
   )

@@ -56,4 +56,11 @@ describe('DiagramNode', () => {
     renderNode({ id: 'n1', label: 'My Node', kind: 'database' })
     expect(document.querySelector('svg.lucide-database')).not.toBeNull()
   })
+
+  it('uses shadow-based depth instead of a hard border on the resting shape', () => {
+    renderNode({ id: 'n1', label: 'My Node', kind: 'service' })
+    const shape = document.querySelector('[data-shape="service"]') as HTMLElement
+    expect(shape.style.border).toBe('')
+    expect(shape.style.boxShadow).toBe('var(--shadow-card)')
+  })
 })
