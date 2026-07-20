@@ -6,6 +6,7 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  MiniMap,
   useNodesState,
   useUpdateNodeInternals,
   type Edge,
@@ -100,6 +101,16 @@ function DiagramFlow({ renderedNodes, flowEdges, onNodesChange, onNodeClick, han
     >
       <Background variant={BackgroundVariant.Dots} color="var(--border)" gap={20} />
       <Controls style={{ filter: 'invert(0.9) hue-rotate(220deg) saturate(0.6)' }} />
+      <MiniMap
+        pannable
+        zoomable
+        maskColor="rgba(12, 13, 16, 0.75)"
+        style={{ background: 'var(--surface)' }}
+        nodeColor={(n) => {
+          const kind = (n.data as { kind?: string }).kind
+          return kind ? `var(--kind-${kind}-fg)` : 'var(--text-faint)'
+        }}
+      />
     </ReactFlow>
   )
 }

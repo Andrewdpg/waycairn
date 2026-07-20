@@ -70,4 +70,9 @@ describe('DiagramCanvas', () => {
     await userEvent.click(screen.getByLabelText('View details for A'))
     expect(onNodeDetailRequest).toHaveBeenCalledWith('a')
   })
+
+  it('renders a minimap', () => {
+    render(<DiagramCanvas nodes={nodes} edges={edges} onNodeClick={() => {}} />)
+    expect(document.querySelector('.react-flow__minimap')).not.toBeNull()
+  })
 })
