@@ -1,6 +1,6 @@
 {
   "name": "waycairn",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Local-first MCP server for documenting a codebase as you work in it — architecture diagrams and notes stored in the repo, versioned in git, no cloud backend.",
   "bin": {
     "waycairn": "dist/bin/waycairn.js"
