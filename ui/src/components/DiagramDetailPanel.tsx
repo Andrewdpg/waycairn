@@ -70,7 +70,8 @@ export function DiagramDetailPanel({ node, notation, onClose, repoId }: DiagramD
     return <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Click a node's eye icon to see its details here.</p>
   }
 
-  const showClassMembers = node.kind === 'class' && notation === 'uml-structural'
+  const showClassMembers =
+    (node.kind === 'class' && notation === 'uml-structural') || (node.kind === 'table' && notation === 'erd')
 
   return (
     <div>

@@ -16,6 +16,7 @@ const EDGE_LEGEND: Array<{ sample: string; label: string; description: string }>
   { sample: '───▷───▷', label: 'Inheritance', description: 'Hollow triangle — the source is a subtype of the target (uml-structural notation).' },
   { sample: '- - - -▶', label: 'Dependency', description: 'Dashed line, no arrowhead — a loose/indirect dependency (uml-structural notation).' },
   { sample: '- - - -▶', label: 'Async step', description: 'Dashed line — an asynchronous step in a uml-behavioral flow (edge has "async": true).' },
+  { sample: '1───◀──∞', label: 'Cardinality', description: 'Shown on the edge label when "cardinality" is set (one-to-one, one-to-many, many-to-one, many-to-many) — erd notation.' },
 ]
 
 export function LegendTab() {

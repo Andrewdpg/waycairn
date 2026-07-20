@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Box, Braces, Database, ExternalLink, Package, Puzzle, Search, Server, Waypoints } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Box, Braces, Database, ExternalLink, Package, Puzzle, Search, Server, Table2, Waypoints } from 'lucide-react'
 import { fetchArtifacts, type ArtifactRecord } from '../lib/apiClient'
 import { computeRootDiagrams, searchDiagrams, type DiagramSummary } from '../lib/rootDiagrams'
 import type { NodeKind } from '../lib/types'
@@ -15,6 +15,7 @@ const KIND_ICON: Record<NodeKind, typeof Box> = {
   class: Braces,
   external: ExternalLink,
   bridge: Waypoints,
+  table: Table2,
 }
 
 function KindStrip({ kinds }: { kinds: NodeKind[] }) {

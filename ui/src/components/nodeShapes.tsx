@@ -164,6 +164,21 @@ function ClassShape({ node, children }: ShapeProps) {
   )
 }
 
+function TableShape({ node, children }: ShapeProps) {
+  return (
+    <div className="node-shape" data-shape="table" style={{ ...baseBoxStyle('table'), borderRadius: 2, padding: 0 }}>
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--kind-table-fg)' }}>{children}</div>
+      {node.attributes && node.attributes.length > 0 && (
+        <div style={{ padding: '6px 12px', fontSize: 11 }}>
+          {node.attributes.map((a, i) => (
+            <div key={i}>{a}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ExternalShape({ children }: ShapeProps) {
   return (
     <div className="node-shape" data-shape="external" style={{ ...baseBoxStyle('external'), borderRadius: 16, borderStyle: 'dashed' }}>
@@ -216,4 +231,5 @@ export const NODE_SHAPES: Record<NodeKind, (props: ShapeProps) => JSX.Element> =
   class: ClassShape,
   external: ExternalShape,
   bridge: BridgeShape,
+  table: TableShape,
 }

@@ -1,4 +1,4 @@
-import { Boxes, Package, Component as ComponentIcon, Workflow, Server, Database, Braces, ExternalLink, Cable, type LucideIcon } from 'lucide-react'
+import { Boxes, Package, Component as ComponentIcon, Workflow, Server, Database, Braces, ExternalLink, Cable, Table2, type LucideIcon } from 'lucide-react'
 import type { NodeKind } from './types'
 
 export const NODE_KIND_ICONS: Record<NodeKind, LucideIcon> = {
@@ -11,6 +11,7 @@ export const NODE_KIND_ICONS: Record<NodeKind, LucideIcon> = {
   class: Braces,
   external: ExternalLink,
   bridge: Cable,
+  table: Table2,
 }
 
 export function getNodeKindIcon(kind: NodeKind): LucideIcon {

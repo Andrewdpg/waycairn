@@ -53,6 +53,29 @@ describe('DiagramDetailPanel', () => {
     expect(screen.getByText('save(): void')).toBeInTheDocument()
   })
 
+  it('shows attributes for a table node in an erd diagram', () => {
+    const node: DiagramNodeData = {
+      id: 'n1',
+      label: 'users',
+      kind: 'table',
+      attributes: ['id: uuid PK', 'email: text UNIQUE'],
+    }
+    render(<DiagramDetailPanel node={node} notation="erd" onClose={() => {}} repoId="host/org/repo" />)
+    expect(screen.getByText('id: uuid PK')).toBeInTheDocument()
+    expect(screen.getByText('email: text UNIQUE')).toBeInTheDocument()
+  })
+
+  it('hides attributes for a table node when the diagram notation is not erd', () => {
+    const node: DiagramNodeData = {
+      id: 'n1',
+      label: 'users',
+      kind: 'table',
+      attributes: ['id: uuid PK'],
+    }
+    render(<DiagramDetailPanel node={node} notation="c4" onClose={() => {}} repoId="host/org/repo" />)
+    expect(screen.queryByText('id: uuid PK')).not.toBeInTheDocument()
+  })
+
   it('hides attributes/operations for a class node when the diagram notation is not uml-structural', () => {
     const node: DiagramNodeData = {
       id: 'n1',
