@@ -117,7 +117,9 @@ export function createLocalMcpServer(
         .object({
           kind: z.string().describe('Artifact kind, e.g. "diagram".'),
           id: z.string(),
-          data: z.unknown().describe('Shape depends on kind — for kind="diagram": { notation?, nodes, edges }.'),
+          data: z
+            .record(z.string(), z.unknown())
+            .describe('Shape depends on kind — for kind="diagram": { notation?, nodes, edges }.'),
           repoPath: repoPathField.default('.'),
         })
         .strict(),
@@ -136,7 +138,7 @@ export function createLocalMcpServer(
       inputSchema: z
         .object({
           kind: z.string(),
-          data: z.unknown(),
+          data: z.record(z.string(), z.unknown()),
         })
         .strict(),
     },
