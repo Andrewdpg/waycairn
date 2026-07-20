@@ -1,14 +1,23 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ReactFlow } from '@xyflow/react'
+import { ReactFlow, type Node } from '@xyflow/react'
 import { DiagramNode } from './DiagramNode'
 import type { DiagramNodeData } from '../lib/types'
+import type { HandlePlacement } from '../lib/edgeGeometry'
 
-function renderNode(data: DiagramNodeData & { onOpenDetail?: (nodeId: string) => void; opacity?: number }) {
+function renderNode(
+  data: DiagramNodeData & { onOpenDetail?: (nodeId: string) => void; opacity?: number; handlePlacements?: HandlePlacement[] }
+) {
   return render(
     <ReactFlow
-      nodes={[{ id: data.id, type: 'diagramNode', position: { x: 0, y: 0 }, data }]}
+      // ponytail: @xyflow/react's Node<NodeData> requires NodeData to satisfy
+      // Record<string, unknown>, which our own DiagramNodeData interface
+      // (a specific shape, no index signature) never structurally satisfies —
+      // same library-type-friction reason nodeTypes/edgeTypes are cast to
+      // ComponentType<any> elsewhere in this codebase, not something worth
+      // loosening the shared DiagramNodeData type for.
+      nodes={[{ id: data.id, type: 'diagramNode', position: { x: 0, y: 0 }, data } as unknown as Node]}
       edges={[]}
       nodeTypes={{ diagramNode: DiagramNode }}
     />
